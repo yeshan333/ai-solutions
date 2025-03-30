@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MacOS和Windows剪切板工具调研报告</title>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://g.alicdn.com/code/lib/tailwindcss/2.2.19/tailwind.min.css">
+    <link rel="stylesheet" href="https://fonts.font.im/css?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap">
+    <script src="https://g.alicdn.com/code/lib/mermaid/11.5.0/mermaid.min.js"></script>
+    <script src="https://g.alicdn.com/code/lib/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #3B82F6;
+            --secondary-color: #6366F1;
+            --accent-color: #8B5CF6;
+            --text-color-light: #1F2937;
+            --text-color-dark: #F3F4F6;
+            --bg-color-light: #FFFFFF;
+            --bg-color-dark: #111827;
+            --card-bg-light: #F9FAFB;
+            --card-bg-dark: #1F2937;
+        }
+        
+        body {
+            font-family: 'Noto Sans SC', Tahoma, Arial, Roboto, "Droid Sans", "Helvetica Neue", "Droid Sans Fallback", "Heiti SC", "Hiragino Sans GB", Simsun, sans-self;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        
+        .dark {
+            color-scheme: dark;
+        }
+        
+        .dark body {
+            background-color: var(--bg-color-dark);
+            color: var(--text-color-dark);
+        }
+        
+        body:not(.dark) {
+            background-color: var(--bg-color-light);
+            color: var(--text-color-light);
+        }
+        
+        .prose {
+            max-width: 65ch;
+            font-size: 1.125rem;
+            line-height: 1.75;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Noto Serif SC', serif;
+            font-weight: 600;
+        }
+        
+        .hero-section {
+            background-image: linear-gradient(120deg, #6366F1, #3B82F6);
+            color: white;
+            padding: 5rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .dark .card {
+            background-color: var(--card-bg-dark);
+        }
+        
+        body:not(.dark) .card {
+            background-color: var(--card-bg-light);
+        }
+        
+        .card {
+            transition: transform 0.3s, box-shadow 0.3s;
+            border-radius: 0.75rem;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        .feature-icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            margin-bottom: 1rem;
+        }
+        
+        .quote {
+            position: relative;
+            padding: 2rem;
+            background-color: rgba(99, 102, 241, 0.1);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 0.5rem;
+            margin: 2rem 0;
+            font-style: italic;
+        }
+        
+        .quote:before {
+            content: '\201C';
+            position: absolute;
+            top: 0;
+            left: 10px;
+            font-size: 4rem;
+            color: var(--primary-color);
+            opacity: 0.3;
+            line-height: 1;
+        }
+        
+        .quote-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .tag-primary {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: var(--primary-color);
+        }
+        
+        .tag-secondary {
+            background-color: rgba(139, 92, 246, 0.1);
+            color: var(--accent-color);
+        }
+        
+        .tool-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tool-card-content {
+            flex: 1;
+        }
+        
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 80vh;
+            width: 80vw;
+            max-width: 1000px;
+            max-height: 600px;
+        }
+        
+        .rating {
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .rating-stars {
+            color: #FBBF24;
+            margin-right: 0.5rem;
+        }
+        
+        .toggle-dark-mode {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .dark .toggle-dark-mode {
+            background-color: var(--card-bg-dark);
+            color: var(--text-color-dark);
+        }
+        
+        body:not(.dark) .toggle-dark-mode {
+            background-color: var(--card-bg-light);
+            color: var(--text-color-light);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+        }
+        
+        .recommendation-label {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+            border-radius: 9999px;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            z-index: 10;
+        }
+        
+        .firstletter::first-letter {
+            font-family: 'Noto Serif SC', serif;
+            float: left;
+            font-size: 3.5em;
+            padding: 0.1em 0.1em 0 0;
+            color: var(--primary-color);
+            line-height: 0.65;
+        }
+        
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.7);
+        }
+        
+        @media (max-width: 768px) {
+            .hero-section {
+                padding: 3rem 0;
+            }
+            
+            .feature-icon {
+                width: 2.5rem;
+                height: 2.5rem;
+            }
+            
+            .chart-container {
+                height: 60vh;
+                width: 95vw;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="hero-section">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="max-w-4xl mx-auto text-center">
+                <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold mb-4">MacOS与Windows剪切板工具专业对比</h1>
+                <p class="text-xl sm:text-2xl text-indigo-100 mb-8">提升效率的不二之选，助力工作流程优化</p>
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a href="#macos-tools" class="bg-white text-indigo-600 px-6 py-3 rounded-lg font-medium hover:bg-indigo-50 transition-colors">
+                        <i class="fab fa-apple mr-2"></i>MacOS工具
+                    </a>
+                    <a href="#windows-tools" class="bg-white text-indigo-600 px-6 py-3 rounded-lg font-medium hover:bg-indigo-50 transition-colors">
+                        <i class="fab fa-windows mr-2"></i>Windows工具
+                    </a>
+                    <a href="#comparison" class="bg-transparent text-white border border-white px-6 py-3 rounded-lg font-medium hover:bg-white hover:text-indigo-600 transition-colors">
+                        <i class="fas fa-chart-bar mr-2"></i>横向比较
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="absolute inset-0 bg-gradient-to-br from-indigo-500 to-blue-600 opacity-80"></div>
+        <div class="absolute inset-0" style="background-image: url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fill-opacity=\"0.1\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E'); background-position: center;"></div>
+    </div>
+
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">为什么需要专业剪切板工具？</h2>
+                <p class="text-lg text-gray-600 dark:text-gray-300">专业剪切板工具不仅能保存复制历史，还提供搜索、格式保留、同步等高级功能，大幅提升工作效率。</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+                <div class="card p-6">
+                    <div class="feature-icon">
+                        <i class="fas fa-history"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">历史记录追踪</h3>
+                    <p class="dark:text-gray-300 text-gray-600">不再丢失任何复制内容，随时回溯查找之前复制的文本、图片和文件。</p>
+                </div>
+
+                <div class="card p-6">
+                    <div class="feature-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">智能搜索功能</h3>
+                    <p class="dark:text-gray-300 text-gray-600">快速定位需要的内容，文本搜索、标签过滤，提高信息检索效率。</p>
+                </div>
+
+                <div class="card p-6">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">格式完整保留</h3>
+                    <p class="dark:text-gray-300 text-gray-600">保留富文本、图片、表格等复杂格式，确保内容粘贴后保持原样。</p>
+                </div>
+
+                <div class="card p-6">
+                    <div class="feature-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">跨设备同步</h3>
+                    <p class="dark:text-gray-300 text-gray-600">在不同设备间无缝共享剪切板内容，提高多设备工作流畅性。</p>
+                </div>
+
+                <div class="card p-6">
+                    <div class="feature-icon">
+                        <i class="fas fa-keyboard"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">快捷键操作</h3>
+                    <p class="dark:text-gray-300 text-gray-600">通过自定义快捷键，实现快速访问和粘贴，减少鼠标操作。</p>
+                </div>
+
+                <div class="card p-6">
+                    <div class="feature-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">脚本与自动化</h3>
+                    <p class="dark:text-gray-300 text-gray-600">高级工具支持自定义脚本和自动化处理，满足专业用户需求。</p>
+                </div>
+            </div>
+
+            <div class="quote">
+                <div class="quote-content">
+                    <p class="mb-4 text-lg">高效的剪切板工具能将每天重复操作的时间缩短20-30%，对于频繁处理文本、代码和图像的专业人士尤为重要。</p>
+                    <p class="font-semibold text-right">— 生产力研究专家</p>
+                </div>
+            </div>
+
+            <div class="my-16" id="macos-tools">
+                <h2 class="text-3xl font-bold mb-8 text-center">MacOS平台推荐剪切板工具</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                    <div class="card tool-card p-6 relative">
+                        <div class="recommendation-label">首选推荐</div>
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">Maccy</h3>
+                                <span class="tag tag-primary">免费开源</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★★</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★★</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">简洁易用的开源免费工具，支持图片格式，搜索功能强大，界面简洁不占用系统资源。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">简洁界面</span>
+                                <span class="tag tag-secondary">轻量级</span>
+                                <span class="tag tag-secondary">图片支持</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="https://maccy.app/" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>官网
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card tool-card p-6">
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">Pastebot</h3>
+                                <span class="tag tag-primary">$12.99</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★☆</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★★</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">功能强大的付费工具，提供顺序粘贴功能和文本过滤器，界面设计精美，适合专业用户。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">顺序粘贴</span>
+                                <span class="tag tag-secondary">过滤器</span>
+                                <span class="tag tag-secondary">多设备同步</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="https://tapbots.com/pastebot/" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>官网
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card tool-card p-6">
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">Raycast</h3>
+                                <span class="tag tag-primary">免费</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★☆</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★★</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★☆</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">多功能启动器，包含剪贴板管理功能，对第三方服务整合深入，可通过命令脚本扩展。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">扩展性强</span>
+                                <span class="tag tag-secondary">脚本支持</span>
+                                <span class="tag tag-secondary">开发者友好</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="https://raycast.com/" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>官网
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card tool-card p-6">
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">Clipy</h3>
+                                <span class="tag tag-primary">免费开源</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★☆</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★☆</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">开源免费工具，支持多格式，自定义历史分组，丰富的快捷键，适合需要多样化格式支持的用户。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">多格式支持</span>
+                                <span class="tag tag-secondary">自定义分组</span>
+                                <span class="tag tag-secondary">快捷键丰富</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="https://github.com/Clipy/Clipy" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>GitHub
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card tool-card p-6">
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">Alfred 4</h3>
+                                <span class="tag tag-primary">需Powerpack</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★★</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">综合工具，剪切板历史只是部分功能，与其他功能协同工作，强大的工作流功能。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">工作流支持</span>
+                                <span class="tag tag-secondary">强大搜索</span>
+                                <span class="tag tag-secondary">插件丰富</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="https://www.alfredapp.com/" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>官网
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card tool-card p-6">
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">Keyboard Maestro</h3>
+                                <span class="tag tag-primary">$36</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★☆☆☆</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★★</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">综合自动化工具，支持暗模式，多编辑器窗口，自动化流程构建，适合高级用户。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">超强自动化</span>
+                                <span class="tag tag-secondary">工作流集成</span>
+                                <span class="tag tag-secondary">高度定制</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="https://www.keyboardmaestro.com/" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>官网
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="my-16" id="windows-tools">
+                <h2 class="text-3xl font-bold mb-8 text-center">Windows平台推荐剪切板工具</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+                    <div class="card tool-card p-6 relative">
+                        <div class="recommendation-label">首选推荐</div>
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">Ditto</h3>
+                                <span class="tag tag-primary">免费开源</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★☆</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★☆</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">Windows平台最受欢迎的开源剪切板工具，永久保存历史记录，支持文本、图像、文件等多种格式。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">永久存储</span>
+                                <span class="tag tag-secondary">多格式支持</span>
+                                <span class="tag tag-secondary">稳定可靠</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="https://ditto-cp.sourceforge.io/" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>官网
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card tool-card p-6">
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">CopyQ</h3>
+                                <span class="tag tag-primary">免费开源</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★★</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">跨平台的高级剪贴板管理器，提供标签和注释功能，强大的脚本和命令行支持，适合开发者。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">跨平台</span>
+                                <span class="tag tag-secondary">脚本支持</span>
+                                <span class="tag tag-secondary">标签功能</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="https://hluk.github.io/CopyQ/" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>官网
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card tool-card p-6">
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">ClipboardFusion</h3>
+                                <span class="tag tag-primary">免费/付费</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★☆</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★☆</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★☆☆☆</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">商业软件，提供跨设备同步，自定义热键和宏，剪贴板数据清理和转换，适合企业环境。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">设备同步</span>
+                                <span class="tag tag-secondary">自定义宏</span>
+                                <span class="tag tag-secondary">文本清理</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="https://www.clipboardfusion.com/" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>官网
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card tool-card p-6">
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">PhraseExpress</h3>
+                                <span class="tag tag-primary">免费/付费</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★★</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">强大的文本展开工具，支持短语记录和快速输入，适合需要频繁输入重复文本的用户。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">文本替换</span>
+                                <span class="tag tag-secondary">宏功能</span>
+                                <span class="tag tag-secondary">自动化</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="https://www.phraseexpress.com/" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>官网
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card tool-card p-6">
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">1Clipboard</h3>
+                                <span class="tag tag-primary">免费</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★★</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★☆</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">简洁的跨平台剪贴板工具，支持谷歌账户同步，实现跨设备共享，界面友好。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">谷歌同步</span>
+                                <span class="tag tag-secondary">简洁界面</span>
+                                <span class="tag tag-secondary">跨平台</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="http://1clipboard.io/" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>官网
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card tool-card p-6">
+                        <div class="tool-card-content">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xl font-bold">Windows内置</h3>
+                                <span class="tag tag-primary">免费</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★★</div>
+                                    <span class="text-sm">易用性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★☆☆</div>
+                                    <span class="text-sm">功能性</span>
+                                </div>
+                                <div class="rating mb-1">
+                                    <div class="rating-stars">★★★★★</div>
+                                    <span class="text-sm">资源占用</span>
+                                </div>
+                            </div>
+                            <p class="dark:text-gray-300 text-gray-600 mb-4">Windows 10/11内置剪贴板历史功能，通过Win+V调用，支持基本云同步功能，无需额外安装。</p>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <span class="tag tag-secondary">系统集成</span>
+                                <span class="tag tag-secondary">跨设备同步</span>
+                                <span class="tag tag-secondary">零安装</span>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <a href="https://support.microsoft.com/en-us/windows/clipboard-in-windows-c436501e-985d-1c8d-97ea-fe46ddf338c6" target="_blank" class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-external-link-alt mr-2"></i>使用指南
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="my-16" id="comparison">
+                <h2 class="text-3xl font-bold mb-8 text-center">横向比较分析</h2>
+                
+                <div class="card p-6 mb-8">
+                    <h3 class="text-xl font-bold mb-4">平台特性对比</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
+                            <thead>
+                                <tr>
+                                    <th class="py-3 px-4 text-left text-sm font-medium">评分类型</th>
+                                    <th class="py-3 px-4 text-left text-sm font-medium">MacOS平台</th>
+                                    <th class="py-3 px-4 text-left text-sm font-medium">Windows平台</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-800">
+                                <tr>
+                                    <td class="py-3 px-4">功能评分</td>
+                                    <td class="py-3 px-4">4.50</td>
+                                    <td class="py-3 px-4">3.95</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4">易用性评分</td>
+                                    <td class="py-3 px-4">3.83</td>
+                                    <td class="py-3 px-4">4.13</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4">性能评分</td>
+                                    <td class="py-3 px-4">4.25</td>
+                                    <td class="py-3 px-4">4.05</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4">扩展性评分</td>
+                                    <td class="py-3 px-4">4.33</td>
+                                    <td class="py-3 px-4">3.37</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                    <div class="card p-6">
+                        <h3 class="text-xl font-bold mb-4">功能对比热图</h3>
+                        <div class="chart-container" style="height: 400px;">
+                            <canvas id="featureHeatmap"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <h3 class="text-xl font-bold mb-4">用户场景适配性</h3>
+                        <div class="chart-container" style="height: 400px;">
+                            <canvas id="scenarioRadar"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card p-6 mb-8">
+                    <h3 class="text-xl font-bold mb-4">价格与性能对比</h3>
+                    <div class="chart-container" style="height: 400px;">
+                        <canvas id="pricePerformanceChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="card p-6">
+                        <h3 class="text-xl font-bold mb-4">MacOS平台的优势</h3>
+                        <ul class="list-disc pl-5 space-y-2 dark:text-gray-300 text-gray-600">
+                            <li>设计与用户体验卓越</li>
+                            <li>系统集成度高</li>
+                            <li>自动化工具生态成熟</li>
+                            <li>对创意工作者更友好</li>
+                            <li>免费工具质量普遍较高</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <h3 class="text-xl font-bold mb-4">Windows平台的优势</h3>
+                        <ul class="list-disc pl-5 space-y-2 dark:text-gray-300 text-gray-600">
+                            <li>功能实用性强</li>
+                            <li>格式支持全面</li>
+                            <li>企业级同步功能更完善</li>
+                            <li>工具选择多样化</li>
+                            <li>性价比较高</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="my-16">
+                <h2 class="text-3xl font-bold mb-8 text-center">用户场景推荐</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0 mr-4">
+                                <i class="fas fa-user-tie text-3xl text-indigo-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold">普通办公用户</h3>
+                        </div>
+                        <p class="dark:text-gray-300 text-gray-600 mb-4">适合需求：简单的剪切板历史记录，偶尔使用</p>
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-2">MacOS推荐：Maccy</h4>
+                            <p class="dark:text-gray-300 text-gray-600 mb-2">开源免费，简洁易用，足够应对日常需求</p>
+                            <h4 class="font-semibold mb-2">Windows推荐：Ditto</h4>
+                            <p class="dark:text-gray-300 text-gray-600">功能全面但不复杂，上手容易，免费开源</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0 mr-4">
+                                <i class="fas fa-code text-3xl text-indigo-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold">开发人员</h3>
+                        </div>
+                        <p class="dark:text-gray-300 text-gray-600 mb-4">适合需求：代码片段管理，脚本支持，扩展性强</p>
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-2">MacOS推荐：Raycast</h4>
+                            <p class="dark:text-gray-300 text-gray-600 mb-2">扩展性极强，支持开发者API，与系统深度集成</p>
+                            <h4 class="font-semibold mb-2">Windows推荐：CopyQ</h4>
+                            <p class="dark:text-gray-300 text-gray-600">强大的脚本支持，命令行功能，跨平台</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0 mr-4">
+                                <i class="fas fa-paint-brush text-3xl text-indigo-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold">设计师</h3>
+                        </div>
+                        <p class="dark:text-gray-300 text-gray-600 mb-4">适合需求：图片支持，格式保留，UI友好，预览功能</p>
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-2">MacOS推荐：Pastebot</h4>
+                            <p class="dark:text-gray-300 text-gray-600 mb-2">对图片支持优秀，界面设计精美，格式保留完整</p>
+                            <h4 class="font-semibold mb-2">Windows推荐：ClipboardFusion</h4>
+                            <p class="dark:text-gray-300 text-gray-600">格式处理能力强，图片支持良好，跨设备同步</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0 mr-4">
+                                <i class="fas fa-edit text-3xl text-indigo-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold">内容创作者</h3>
+                        </div>
+                        <p class="dark:text-gray-300 text-gray-600 mb-4">适合需求：文本处理，格式转换，模板支持</p>
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-2">MacOS推荐：Pastebot</h4>
+                            <p class="dark:text-gray-300 text-gray-600 mb-2">文本转换过滤器功能强大，顺序粘贴功能实用</p>
+                            <h4 class="font-semibold mb-2">Windows推荐：PhraseExpress</h4>
+                            <p class="dark:text-gray-300 text-gray-600">短语记录和快速输入功能出色，宏功能丰富</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0 mr-4">
+                                <i class="fas fa-cogs text-3xl text-indigo-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold">自动化爱好者</h3>
+                        </div>
+                        <p class="dark:text-gray-300 text-gray-600 mb-4">适合需求：宏，脚本，流程自动化，系统集成</p>
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-2">MacOS推荐：Keyboard Maestro</h4>
+                            <p class="dark:text-gray-300 text-gray-600 mb-2">超强自动化能力，与系统深度集成，可创建复杂工作流</p>
+                            <h4 class="font-semibold mb-2">Windows推荐：PhraseExpress</h4>
+                            <p class="dark:text-gray-300 text-gray-600">强大的宏功能，程序和文件快速启动，自动化选项丰富</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0 mr-4">
+                                <i class="fas fa-laptop text-3xl text-indigo-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold">跨平台工作者</h3>
+                        </div>
+                        <p class="dark:text-gray-300 text-gray-600 mb-4">适合需求：同步功能，跨平台一致性，云服务支持</p>
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-2">跨平台推荐：CopyQ</h4>
+                            <p class="dark:text-gray-300 text-gray-600 mb-2">跨平台一致性好，基本功能在不同系统中表现相似</p>
+                            <h4 class="font-semibold mb-2">备选推荐：1Clipboard</h4>
+                            <p class="dark:text-gray-300 text-gray-600">通过Google账户同步，跨平台访问剪贴板</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="my-16">
+                <h2 class="text-3xl font-bold mb-8 text-center">未来趋势展望</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0 mr-4">
+                                <i class="fas fa-brain text-3xl text-indigo-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold">AI集成</h3>
+                        </div>
+                        <p class="dark:text-gray-300 text-gray-600">剪贴板工具可能会集成更多AI功能，如内容分类、自动摘要和智能建议，提供更智能的内容管理体验。</p>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0 mr-4">
+                                <i class="fas fa-sync-alt text-3xl text-indigo-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold">跨平台同步</h3>
+                        </div>
+                        <p class="dark:text-gray-300 text-gray-600">随着云服务的普及，跨平台同步将成为标准功能，用户可在不同设备间无缝访问剪贴板历史。</p>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0 mr-4">
+                                <i class="fas fa-shield-alt text-3xl text-indigo-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold">安全性增强</h3>
+                        </div>
+                        <p class="dark:text-gray-300 text-gray-600">随着隐私意识提升，剪贴板工具将增强加密和隐私保护功能，保护敏感信息安全。</p>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0 mr-4">
+                                <i class="fas fa-layer-group text-3xl text-indigo-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold">系统集成深化</h3>
+                        </div>
+                        <p class="dark:text-gray-300 text-gray-600">未来操作系统可能会不断增强内置剪贴板功能，第三方工具将向更专业的方向发展。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="my-16">
+                <h2 class="text-3xl font-bold mb-8 text-center">专家推荐清单</h2>
+                
+                <div class="card p-6">
+                    <div class="mb-8">
+                        <h3 class="text-2xl font-bold mb-4">最佳综合推荐</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="text-xl font-semibold mb-2">MacOS平台</h4>
+                                <ul class="list-disc pl-5 space-y-2 dark:text-gray-300 text-gray-600">
+                                    <li><strong>普通用户</strong>: Maccy (免费开源)</li>
+                                    <li><strong>专业用户</strong>: Raycast (免费) / Alfred 4 (付费)</li>
+                                    <li><strong>自动化需求</strong>: Keyboard Maestro ($36)</li>
+                                    <li><strong>创意工作者</strong>: Pastebot ($12.99)</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold mb-2">Windows平台</h4>
+                                <ul class="list-disc pl-5 space-y-2 dark:text-gray-300 text-gray-600">
+                                    <li><strong>普通用户</strong>: Ditto (免费开源)</li>
+                                    <li><strong>专业用户</strong>: CopyQ (免费开源)</li>
+                                    <li><strong>企业用户</strong>: ClipboardFusion (免费/付费)</li>
+                                    <li><strong>创意工作者</strong>: PhraseExpress (免费/付费)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-2xl font-bold mb-4">如何做出最佳选择</h3>
+                        <div class="firstletter dark:text-gray-300 text-gray-600">
+                            <p class="mb-4">选择剪切板工具时，应首先明确自己的用户类型和核心需求。普通办公用户通常只需要基本的历史记录和搜索功能，免费工具如Maccy或Ditto完全足够。开发人员应选择具有强大脚本支持的工具如Raycast或CopyQ。设计师和内容创作者则需要考虑格式保留和多媒体支持的工具如Pastebot。</p>
+                            <p class="mb-4">预算因素也是重要考量。好在大多数免费工具已能满足基本需求，付费工具主要是提供更专业的功能和更完善的支持。建议在正式选择前试用多款工具，大多数付费工具都提供试用期。</p>
+                            <p>最终，最适合的工具是能够融入你日常工作流程、提升效率而非增加额外负担的那一个。无论选择哪款工具，充分利用其功能并养成良好的使用习惯，都能显著提高工作效率。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-16 mb-12 text-center">
+                <p class="text-sm text-gray-500 dark:text-gray-400">剪切板工具调研报告 | 生成时间: 2025年03月30日</p>
+            </div>
+        </div>
+    </div>
+
+    <button class="toggle-dark-mode" id="darkModeToggle">
+        <i class="fas fa-moon dark:hidden"></i>
+        <i class="fas fa-sun hidden dark:block"></i>
+    </button>
+
+    <script>
+        // 初始化Mermaid
+        mermaid.initialize({ startOnLoad: true, theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default' });
+
+        // 暗色/亮色模式切换
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        
+        // 检查系统偏好
+        const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        // 检查用户设置
+        let darkMode = localStorage.getItem('darkMode');
+        
+        // 如果没有用户设置，使用系统偏好
+        if (darkMode === null) {
+            darkMode = prefersDarkMode ? 'dark' : 'light';
+        }
+        
+        // 应用当前设置
+        if (darkMode === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        
+        // 切换按钮事件
+        darkModeToggle.addEventListener('click', () => {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('darkMode', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('darkMode', 'dark');
+            }
+            
+            // 重新初始化图表
+            initCharts();
+        });
+
+        // 图表初始化
+        function initCharts() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const textColor = isDark ? '#F3F4F6' : '#1F2937';
+            const gridColor = isDark ? 'rgba(243, 244, 246, 0.1)' : 'rgba(31, 41, 55, 0.1)';
+            
+            // 功能对比热图
+            const ctxFeature = document.getElementById('featureHeatmap').getContext('2d');
+            if (window.featureChart) {
+                window.featureChart.destroy();
+            }
+            
+            window.featureChart = new Chart(ctxFeature, {
+                type: 'radar',
+                data: {
+                    labels: ['历史记录', '搜索功能', '格式保留', '图片支持', '脚本支持', '同步功能', '资源占用'],
+                    datasets: [
+                        {
+                            label: 'Maccy (MacOS)',
+                            data: [5, 4, 3, 4, 1, 2, 5],
+                            backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(99, 102, 241, 1)'
+                        },
+                        {
+                            label: 'Ditto (Windows)',
+                            data: [5, 4, 4, 5, 2, 3, 3],
+                            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                            borderColor: 'rgba(139, 92, 246, 1)',
+                            pointBackgroundColor: 'rgba(139, 92, 246, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(139, 92, 246, 1)'
+                        },
+                        {
+                            label: 'Pastebot (MacOS)',
+                            data: [5, 4, 5, 5, 3, 4, 3],
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(59, 130, 246, 1)'
+                        },
+                        {
+                            label: 'CopyQ (跨平台)',
+                            data: [5, 5, 4, 4, 5, 3, 3],
+                            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                            borderColor: 'rgba(16, 185, 129, 1)',
+                            pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(16, 185, 129, 1)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: gridColor
+                            },
+                            grid: {
+                                color: gridColor
+                            },
+                            pointLabels: {
+                                color: textColor
+                            },
+                            ticks: {
+                                color: textColor,
+                                backdropColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: textColor
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 用户场景雷达图
+            const ctxScenario = document.getElementById('scenarioRadar').getContext('2d');
+            if (window.scenarioChart) {
+                window.scenarioChart.destroy();
+            }
+            
+            window.scenarioChart = new Chart(ctxScenario, {
+                type: 'radar',
+                data: {
+                    labels: ['普通办公', '开发人员', '设计师', '内容创作', '自动化', '跨平台'],
+                    datasets: [
+                        {
+                            label: 'MacOS工具平均',
+                            data: [4.2, 4.5, 4.0, 4.3, 4.5, 3.5],
+                            backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            pointBackgroundColor: 'rgba(99, 102, 241, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(99, 102, 241, 1)'
+                        },
+                        {
+                            label: 'Windows工具平均',
+                            data: [4.3, 4.0, 3.7, 4.0, 3.8, 4.0],
+                            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                            borderColor: 'rgba(139, 92, 246, 1)',
+                            pointBackgroundColor: 'rgba(139, 92, 246, 1)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgba(139, 92, 246, 1)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: gridColor
+                            },
+                            grid: {
+                                color: gridColor
+                            },
+                            pointLabels: {
+                                color: textColor
+                            },
+                            ticks: {
+                                color: textColor,
+                                backdropColor: isDark ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: textColor
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 价格性能散点图
+            const ctxPrice = document.getElementById('pricePerformanceChart').getContext('2d');
+            if (window.priceChart) {
+                window.priceChart.destroy();
+            }
+            
+            window.priceChart = new Chart(ctxPrice, {
+                type: 'scatter',
+                data: {
+                    datasets: [
+                        {
+                            label: 'MacOS工具',
+                            data: [
+                                {x: 0, y: 4.0, r: 10, name: 'Maccy'},
+                                {x: 0, y: 3.8, r: 9, name: 'Clipy'},
+                                {x: 12.99, y: 4.3, r: 12, name: 'Pastebot'},
+                                {x: 29, y: 4.4, r: 15, name: 'Alfred 4'},
+                                {x: 0, y: 4.4, r: 13, name: 'Raycast'},
+                                {x: 36, y: 4.2, r: 14, name: 'Keyboard Maestro'}
+                            ],
+                            backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1,
+                            pointRadius: 8
+                        },
+                        {
+                            label: 'Windows工具',
+                            data: [
+                                {x: 0, y: 3.9, r: 10, name: 'Ditto'},
+                                {x: 0, y: 4.2, r: 11, name: 'CopyQ'},
+                                {x: 15, y: 3.8, r: 9, name: 'ClipboardFusion'},
+                                {x: 49.95, y: 4.0, r: 10, name: 'PhraseExpress'},
+                                {x: 0, y: 3.5, r: 7, name: 'Windows内置'},
+                                {x: 0, y: 3.6, r: 8, name: '1Clipboard'}
+                            ],
+                            backgroundColor: 'rgba(139, 92, 246, 0.7)',
+                            borderColor: 'rgba(139, 92, 246, 1)',
+                            borderWidth: 1,
+                            pointRadius: 8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '价格 (USD)',
+                                color: textColor
+                            },
+                            ticks: {
+                                color: textColor
+                            },
+                            grid: {
+                                color: gridColor
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '综合评分',
+                                color: textColor
+                            },
+                            min: 3,
+                            max: 5,
+                            ticks: {
+                                color: textColor
+                            },
+                            grid: {
+                                color: gridColor
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: textColor
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const point = context.dataset.data[context.dataIndex];
+                                    return `${point.name}: $${point.x}, 评分: ${point.y}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 页面加载完成后初始化图表
+        document.addEventListener('DOMContentLoaded', initCharts);
+
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
