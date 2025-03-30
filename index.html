@@ -110,6 +110,8 @@
             border-radius: 5px;
             background-color: #f5f5f5;
             transition: var(--transition);
+            display: flex;
+            align-items: center;
         }
 
         .file-link:hover {
@@ -120,6 +122,17 @@
 
         .file-name {
             font-weight: 500;
+        }
+        
+        .new-badge {
+            background-color: var(--secondary-color);
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            margin-left: 0.5rem;
+            font-weight: bold;
+            text-transform: uppercase;
         }
 
         footer {
@@ -177,6 +190,12 @@
                 <div class="category-content">
                     <ul class="file-list">
                         <li class="file-item">
+                            <a href="ui-automation-techniques/Airtest-internal.html" class="file-link">
+                                <span class="file-name">Airtest自动化操作页面原理解析</span>
+                                <span class="new-badge">新</span>
+                            </a>
+                        </li>
+                        <li class="file-item">
                             <a href="ui-automation-techniques/AppAgent-like-tools.html" class="file-link">
                                 <span class="file-name">AppAgent 类工具</span>
                             </a>
@@ -194,6 +213,18 @@
                         <li class="file-item">
                             <a href="ui-automation-techniques/Midscenejs-internal.html" class="file-link">
                                 <span class="file-name">Midscene.js 内部实现</span>
+                            </a>
+                        </li>
+                        <li class="file-item">
+                            <a href="ui-automation-techniques/Playwright-internal.html" class="file-link">
+                                <span class="file-name">Playwright自动化网页操作与鼠标点击控制原理</span>
+                                <span class="new-badge">新</span>
+                            </a>
+                        </li>
+                        <li class="file-item">
+                            <a href="ui-automation-techniques/qwen-2.5vl-analyze.html" class="file-link">
+                                <span class="file-name">Qwen2.5VL实现用户意图设备控制的技术分析</span>
+                                <span class="new-badge">新</span>
                             </a>
                         </li>
                     </ul>
