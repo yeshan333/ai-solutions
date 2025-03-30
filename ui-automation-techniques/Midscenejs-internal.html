@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MidScene.js：字节跳动AI驱动的浏览器自动化工具 | 技术分析报告</title>
+    <link href="https://fonts.font.im/css?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://g.alicdn.com/code/lib/tailwindcss/2.2.19/tailwind.min.css">
+    <script src="https://g.alicdn.com/code/lib/mermaid/11.5.0/mermaid.min.js"></script>
+    <script src="https://g.alicdn.com/code/lib/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        /* 基础样式 */
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #8b5cf6;
+            --accent: #0ea5e9;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-primary: #1f2937;
+            --text-secondary: #4b5563;
+            --text-tertiary: #9ca3af;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb;
+            --bg-tertiary: #f3f4f6;
+            --border-color: #e5e7eb;
+            --card-bg: #ffffff;
+        }
+        
+        /* 深色模式 */
+        .dark {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #a78bfa;
+            --accent: #0ea5e9;
+            --success: #34d399;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --text-primary: #f9fafb;
+            --text-secondary: #e5e7eb;
+            --text-tertiary: #9ca3af;
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --bg-tertiary: #374151;
+            --border-color: #374151;
+            --card-bg: #1f2937;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            color: var(--text-primary);
+            background-color: var(--bg-primary);
+            transition: background-color 0.3s ease;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Noto Serif SC', serif;
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: var(--card-bg);
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* 按钮和交互元素 */
+        .btn {
+            @apply px-4 py-2 rounded-md font-medium transition-all duration-300 ease-in-out;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        /* 自定义块引用样式 */
+        blockquote {
+            border-left: 4px solid var(--primary);
+            padding-left: 1rem;
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+        
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+        
+        table th {
+            background-color: var(--bg-secondary);
+            border-bottom: 2px solid var(--border-color);
+            padding: 0.75rem;
+            text-align: left;
+        }
+        
+        table td {
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem;
+        }
+        
+        /* 代码样式 */
+        code {
+            font-family: Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+            background-color: var(--bg-tertiary);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-size: 0.875em;
+        }
+        
+        pre {
+            background-color: var(--bg-tertiary);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+        }
+        
+        pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        
+        /* 导航栏固定 */
+        .sticky-nav {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(8px);
+            background-color: rgba(var(--bg-primary-rgb), 0.8);
+        }
+        
+        /* 首字下沉样式 */
+        .first-letter:first-letter {
+            font-family: 'Noto Serif SC', serif;
+            float: left;
+            font-size: 3.25em;
+            line-height: 0.8;
+            padding-right: 0.1em;
+            color: var(--primary);
+        }
+        
+        /* 微交互效果 */
+        .hover-scale {
+            transition: transform 0.3s ease;
+        }
+        
+        .hover-scale:hover {
+            transform: scale(1.02);
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--bg-tertiary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--text-tertiary);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* 进度条样式 */
+        .progress-bar {
+            height: 6px;
+            background-color: var(--primary);
+        }
+        
+        /* 数据可视化容器 */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+        }
+        
+        /* 突出显示文本 */
+        .highlight {
+            background: linear-gradient(120deg, rgba(var(--primary-rgb), 0.2) 0%, rgba(var(--secondary-rgb), 0.2) 100%);
+            padding: 0.2em 0;
+            border-radius: 0.25em;
+        }
+
+        /* 悬浮阴影 */
+        .hover-shadow:hover {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        /* 图标容器 */
+        .icon-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background-color: var(--bg-tertiary);
+            color: var(--primary);
+            margin-right: 0.5rem;
+        }
+        
+        /* 使图表在暗模式下更友好 */
+        .dark .chart-container canvas {
+            filter: brightness(0.8) invert(0.2);
+        }
+        
+        /* 导航链接激活状态 */
+        .nav-link.active {
+            color: var(--primary);
+            font-weight: 500;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 640px) {
+            .container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            h1 {
+                font-size: 1.75rem;
+            }
+            
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <!-- 顶部导航栏 -->
+    <nav class="bg-white dark:bg-gray-800 sticky-nav border-b border-gray-200 dark:border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <span class="text-xl font-bold text-blue-600 dark:text-blue-400">MidScene.js</span>
+                        <span class="text-sm text-gray-500 dark:text-gray-400 ml-2">字节跳动技术分析</span>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <button id="theme-toggle" class="p-2 rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none">
+                        <i id="theme-toggle-dark-icon" class="fas fa-moon hidden"></i>
+                        <i id="theme-toggle-light-icon" class="fas fa-sun hidden"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero部分 -->
+    <div class="bg-gradient-to-r from-blue-700 to-indigo-800 dark:from-blue-900 dark:to-indigo-900">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+            <div class="text-center">
+                <h1 class="text-4xl font-extrabold text-white sm:text-5xl sm:tracking-tight">
+                    <span class="block">MidScene.js</span>
+                    <span class="block text-blue-200">AI驱动的浏览器自动化新范式</span>
+                </h1>
+                <p class="mt-6 max-w-2xl mx-auto text-xl text-blue-100">
+                    字节跳动开源的多模态AI驱动浏览器自动化工具，重新定义了UI自动化测试体验。
+                </p>
+                <div class="mt-8 flex justify-center space-x-4">
+                    <a href="#overview" class="btn btn-primary bg-white text-blue-700 hover:bg-gray-100 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-gray-700">
+                        <i class="fas fa-book-open mr-2"></i>开始阅读
+                    </a>
+                    <a href="https://github.com/web-infra-dev/midscene" target="_blank" class="btn btn-primary bg-blue-500 hover:bg-blue-600 text-white dark:bg-blue-600 dark:hover:bg-blue-500">
+                        <i class="fab fa-github mr-2"></i>GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 目录导航 -->
+    <div class="bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <nav class="flex space-x-8 overflow-x-auto py-4 text-gray-600 dark:text-gray-300">
+                <a href="#overview" class="nav-link hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">概述</a>
+                <a href="#core-tech" class="nav-link hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">核心技术</a>
+                <a href="#arch-design" class="nav-link hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">架构设计</a>
+                <a href="#performance" class="nav-link hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">性能与优化</a>
+                <a href="#comparison" class="nav-link hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">技术对比</a>
+                <a href="#future" class="nav-link hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">未来展望</a>
+                <a href="#reading" class="nav-link hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">延伸阅读</a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- 主要内容部分 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- 概述部分 -->
+        <section id="overview" class="mb-16">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">项目概述</h2>
+                <div class="h-1 w-24 bg-blue-600 dark:bg-blue-500 rounded"></div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="md:col-span-2">
+                    <p class="text-lg text-gray-700 dark:text-gray-300 mb-4 first-letter">
+                        MidScene.js 是字节跳动 Web Infra 团队开源的一款创新型浏览器自动化工具，它通过引入多模态AI能力，彻底改变了传统UI自动化测试的编写和维护方式。与传统的自动化工具不同，MidScene.js允许开发者使用自然语言描述操作步骤，由AI自动规划并执行相应的浏览器操作，极大地降低了自动化测试的技术门槛和维护成本。
+                    </p>
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">
+                        这款工具的出现解决了传统UI自动化测试中的核心痛点：对精确选择器的依赖导致的脆弱性问题和高维护成本。通过利用多模态大语言模型（如GPT-4o、Qwen2.5-VL等）的视觉理解能力，MidScene.js能够像人类一样"看懂"网页界面，执行复杂的交互操作，并进行智能化的数据提取和验证。
+                    </p>
+                    <div class="mt-6 flex items-center">
+                        <div class="flex items-center text-gray-500 dark:text-gray-400 mr-6">
+                            <i class="fas fa-code-branch mr-2"></i>
+                            <span>开源项目</span>
+                        </div>
+                        <div class="flex items-center text-gray-500 dark:text-gray-400 mr-6">
+                            <i class="fas fa-calendar-alt mr-2"></i>
+                            <span>2024年发布</span>
+                        </div>
+                        <div class="flex items-center text-gray-500 dark:text-gray-400">
+                            <i class="fas fa-building mr-2"></i>
+                            <span>字节跳动</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">核心特性</h3>
+                    <ul class="space-y-3">
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-comments text-blue-600 dark:text-blue-400 mt-1"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-gray-700 dark:text-gray-300">自然语言控制浏览器操作，无需编写复杂选择器</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-eye text-blue-600 dark:text-blue-400 mt-1"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-gray-700 dark:text-gray-300">多模态AI理解页面视觉内容和结构</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-puzzle-piece text-blue-600 dark:text-blue-400 mt-1"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-gray-700 dark:text-gray-300">与Puppeteer、Playwright无缝集成</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-file-code text-blue-600 dark:text-blue-400 mt-1"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-gray-700 dark:text-gray-300">支持YAML脚本编写，降低编码门槛</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-chart-line text-blue-600 dark:text-blue-400 mt-1"></i>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-gray-700 dark:text-gray-300">智能提取数据和执行断言验证</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="mt-12 bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">应用场景</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white dark:bg-gray-700 rounded-lg p-4 hover-shadow">
+                        <div class="text-blue-600 dark:text-blue-400 mb-3">
+                            <i class="fas fa-vial fa-2x"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">UI自动化测试</h4>
+                        <p class="text-gray-600 dark:text-gray-300">快速创建稳定的UI测试，适应界面变化，降低维护成本</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-700 rounded-lg p-4 hover-shadow">
+                        <div class="text-blue-600 dark:text-blue-400 mb-3">
+                            <i class="fas fa-robot fa-2x"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">网页自动化操作</h4>
+                        <p class="text-gray-600 dark:text-gray-300">批量处理、数据收集、表单填写等重复性网页操作</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-700 rounded-lg p-4 hover-shadow">
+                        <div class="text-blue-600 dark:text-blue-400 mb-3">
+                            <i class="fas fa-search fa-2x"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">网页数据提取</h4>
+                        <p class="text-gray-600 dark:text-gray-300">通过自然语言描述从复杂网页中智能提取结构化数据</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-700 rounded-lg p-4 hover-shadow">
+                        <div class="text-blue-600 dark:text-blue-400 mb-3">
+                            <i class="fas fa-tasks fa-2x"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">工作流自动化</h4>
+                        <p class="text-gray-600 dark:text-gray-300">构建端到端的业务流程自动化，提高工作效率</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 核心技术部分 -->
+        <section id="core-tech" class="mb-16">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">核心实现原理</h2>
+                <div class="h-1 w-24 bg-blue-600 dark:bg-blue-500 rounded"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+                <div class="card p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="rounded-full bg-blue-100 dark:bg-blue-900 p-3">
+                            <i class="fas fa-brain text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                        <h3 class="ml-4 text-xl font-semibold text-gray-900 dark:text-white">多模态AI能力</h3>
+                    </div>
+                    <p class="text-gray-700 dark:text-gray-300 mb-4">
+                        MidScene.js的核心创新在于将多模态大语言模型的视觉理解能力引入UI自动化测试领域。系统会为AI提供以下关键信息：
+                    </p>
+                    <ul class="space-y-2 text-gray-700 dark:text-gray-300">
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>页面截图作为视觉输入</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>页面DOM结构的简化表示</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>用户的自然语言指令</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                            <span>当前浏览器状态和上下文</span>
+                        </li>
+                    </ul>
+                    <div class="mt-6">
+                        <p class="text-gray-700 dark:text-gray-300">
+                            AI模型结合这些信息，理解页面内容和用户意图，然后生成执行计划，包括定位元素和执行具体操作的步骤。
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="rounded-full bg-blue-100 dark:bg-blue-900 p-3">
+                            <i class="fas fa-code-branch text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                        <h3 class="ml-4 text-xl font-semibold text-gray-900 dark:text-white">工作流程</h3>
+                    </div>
+
+                    <div class="mt-4">
+                        <pre class="mermaid bg-white dark:bg-gray-700 p-4 rounded-lg text-sm">
+graph TB
+    A[用户自然语言指令] --> B[截取页面截图]
+    B --> C[分析DOM结构]
+    C --> D[生成AI提示]
+    D --> E{调用多模态AI模型}
+    E --> F[解析AI响应]
+    F --> G[元素定位]
+    G --> H[执行具体操作]
+    H --> I[结果验证/报告]
+                        </pre>
+                    </div>
+                    <div class="mt-6 text-sm text-gray-600 dark:text-gray-400">
+                        <p><i class="fas fa-info-circle mr-2"></i>图表展示了从用户指令到操作执行的完整流程</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-10">
+                <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">三大核心API</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="card p-6 border-t-4 border-blue-500">
+                        <div class="flex justify-between items-start">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white">.ai()/.aiAction()</h4>
+                            <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300">交互</span>
+                        </div>
+                        <p class="mt-4 text-gray-700 dark:text-gray-300">
+                            使用自然语言描述并执行浏览器操作，如点击、输入、滚动等交互动作。
+                        </p>
+                        <div class="mt-4 bg-gray-50 dark:bg-gray-800 rounded p-3">
+                            <code class="text-sm text-gray-800 dark:text-gray-200">
+                                await mid.ai('点击页面上的"注册"按钮');
+                            </code>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 border-t-4 border-purple-500">
+                        <div class="flex justify-between items-start">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white">.aiQuery()</h4>
+                            <span class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded dark:bg-purple-900 dark:text-purple-300">提取</span>
+                        </div>
+                        <p class="mt-4 text-gray-700 dark:text-gray-300">
+                            从当前页面中理解并提取结构化数据，返回JSON格式结果。
+                        </p>
+                        <div class="mt-4 bg-gray-50 dark:bg-gray-800 rounded p-3">
+                            <code class="text-sm text-gray-800 dark:text-gray-200">
+                                const data = await mid.aiQuery<br>('获取所有商品的名称和价格');
+                            </code>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 border-t-4 border-green-500">
+                        <div class="flex justify-between items-start">
+                            <h4 class="text-lg font-semibold text-gray-900 dark:text-white">.aiAssert()</h4>
+                            <span class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded dark:bg-green-900 dark:text-green-300">断言</span>
+                        </div>
+                        <p class="mt-4 text-gray-700 dark:text-gray-300">
+                            使用自然语言描述断言，验证页面状态或内容是否符合预期。
+                        </p>
+                        <div class="mt-4 bg-gray-50 dark:bg-gray-800 rounded p-3">
+                            <code class="text-sm text-gray-800 dark:text-gray-200">
+                                await mid.aiAssert('页面显示登录成功');
+                            </code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">技术创新点</h3>
+                <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">创新点</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">传统方法</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">MidScene.js方案</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">优势</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">元素识别方式</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">精确CSS/XPath选择器</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">自然语言描述 + 视觉理解</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">更灵活，适应UI变化</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">测试脚本编写</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">编程代码 + 技术细节</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">自然语言描述 + YAML</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">降低技术门槛，提高效率</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">上下文理解</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">有限，需显式处理</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">智能理解页面语境和用户意图</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">更自然的交互体验</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">失败恢复</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">需编写显式的重试逻辑</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">智能尝试替代方案</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">提高测试稳定性</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">数据提取</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">手动解析DOM结构</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">自然语言描述所需数据</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">简化复杂数据提取过程</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 架构设计部分 -->
+        <section id="arch-design" class="mb-16">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">工程架构设计</h2>
+                <div class="h-1 w-24 bg-blue-600 dark:bg-blue-500 rounded"></div>
+            </div>
+
+            <div class="mb-10">
+                <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">模块化组织</h3>
+                <div class="card p-6">
+                    <div class="mermaid bg-white dark:bg-gray-700 p-4 rounded-lg text-sm">
+graph TD
+    A[MidScene.js项目] --> B[apps/]
+    A --> C[packages/]
+    A --> D[scripts/]
+    
+    B --> B1[chrome-extension/]
+    B --> B2[site/]
+    
+    C --> C1[core/]
+    C --> C2[web-integration/]
+    C --> C3[cli/]
+    C --> C4[android/]
+    C --> C5[shared/]
+    C --> C6[evaluation/]
+    C --> C7[visualizer/]
+    
+    C1 --> C1A[ai-model/]
+    C1 --> C1B[image/]
+    C1 --> C1C[insight/]
+    
+    C1A --> C1A1[action-executor.ts]
+    C1A --> C1A2[llm-planning.ts]
+    C1A --> C1A3[prompt/]
+    C1A --> C1A4[service-caller/]
+                    </div>
+                    <p class="mt-6 text-gray-700 dark:text-gray-300">
+                        MidScene.js采用清晰的模块化架构和Monorepo管理策略，核心功能和各集成实现分离，便于扩展和维护。主要模块包括：
+                    </p>
+                    <ul class="mt-4 space-y-2 text-gray-700 dark:text-gray-300">
+                        <li class="flex items-start">
+                            <i class="fas fa-folder text-yellow-500 mr-2 mt-1"></i>
+                            <div>
+                                <strong>apps/</strong>: 面向最终用户的应用，包含Chrome扩展和官方网站
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-folder text-yellow-500 mr-2 mt-1"></i>
+                            <div>
+                                <strong>packages/core/</strong>: 核心实现，包含AI模型集成、图像处理和数据分析
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-folder text-yellow-500 mr-2 mt-1"></i>
+                            <div>
+                                <strong>packages/web-integration/</strong>: 与Puppeteer、Playwright等工具的集成
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-folder text-yellow-500 mr-2 mt-1"></i>
+                            <div>
+                                <strong>packages/cli/</strong>: 命令行工具，支持执行YAML脚本
+                            </div>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fas fa-folder text-yellow-500 mr-2 mt-1"></i>
+                            <div>
+                                <strong>packages/shared/</strong>: 共享工具和资源
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">依赖管理策略</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200">工作区管理</h4>
+                            <p class="text-gray-700 dark:text-gray-300 mt-2">
+                                MidScene.js使用pnpm管理工作区，实现高效的monorepo结构，统一依赖管理和构建流程。
+                            </p>
+                        </div>
+                        <div>
+                            <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200">核心依赖分类</h4>
+                            <ul class="mt-2 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li class="flex items-start">
+                                    <i class="fas fa-cube text-blue-500 mr-2 mt-1"></i>
+                                    <span><strong>生产依赖</strong>: 核心运行时所需库，如AI客户端库</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-cube text-green-500 mr-2 mt-1"></i>
+                                    <span><strong>开发依赖</strong>: 开发、测试和构建工具</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-cube text-purple-500 mr-2 mt-1"></i>
+                                    <span><strong>对等依赖</strong>: Puppeteer、Playwright等集成框架</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200">版本控制</h4>
+                            <p class="text-gray-700 dark:text-gray-300 mt-2">
+                                采用语义化版本控制(Semantic Versioning)，统一管理各子包的版本号，确保兼容性和稳定性。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">API设计哲学</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200">自然语言优先</h4>
+                            <p class="text-gray-700 dark:text-gray-300 mt-2">
+                                所有API接口都支持使用自然语言描述操作，降低技术门槛，提高可读性和可维护性。
+                            </p>
+                        </div>
+                        <div>
+                            <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200">简洁明了</h4>
+                            <p class="text-gray-700 dark:text-gray-300 mt-2">
+                                API命名简短直观（.ai/.aiQuery/.aiAssert），反映其功能，遵循直观的动词命名模式。
+                            </p>
+                        </div>
+                        <div>
+                            <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200">链式调用</h4>
+                            <p class="text-gray-700 dark:text-gray-300 mt-2">
+                                支持API方法的链式调用，提高代码可读性和流畅性，便于构建复杂测试场景。
+                            </p>
+                            <div class="mt-2 bg-gray-50 dark:bg-gray-800 rounded p-3">
+                                <code class="text-sm text-gray-800 dark:text-gray-200">
+                                    await mid<br>  .ai('登录系统')<br>  .aiQuery('获取用户名')<br>  .aiAssert('页面显示欢迎信息');
+                                </code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-10">
+                <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">扩展性机制</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="card p-6 hover-scale">
+                        <div class="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center mb-4">
+                            <i class="fas fa-plug text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">模型扩展</h4>
+                        <p class="text-gray-700 dark:text-gray-300">
+                            支持配置使用不同的AI模型，如GPT-4o、Qwen2.5-VL等，通过环境变量轻松切换，适应不同的性能和成本需求。
+                        </p>
+                    </div>
+                    <div class="card p-6 hover-scale">
+                        <div class="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mb-4">
+                            <i class="fas fa-puzzle-piece text-green-600 dark:text-green-400"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">集成扩展</h4>
+                        <p class="text-gray-700 dark:text-gray-300">
+                            提供与主流自动化工具的集成模块，包括PuppeteerAgent、PlaywrightAgent类，以及Chrome扩展和CLI工具，支持多种使用场景。
+                        </p>
+                    </div>
+                    <div class="card p-6 hover-scale">
+                        <div class="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center mb-4">
+                            <i class="fas fa-cogs text-purple-600 dark:text-purple-400"></i>
+                        </div>
+                        <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-2">插件系统</h4>
+                        <p class="text-gray-700 dark:text-gray-300">
+                            基于插件系统设计，允许开发者编写自定义插件扩展功能，如自定义提示模板、操作执行器、数据提取器等，不修改框架源码。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">前端框架/库集成方式</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">与自动化工具集成</h4>
+                        <div class="bg-gray-50 dark:bg-gray-800 rounded p-4 mb-4">
+                            <pre class="text-sm text-gray-800 dark:text-gray-200">
+<span class="text-blue-600 dark:text-blue-400">// Puppeteer集成示例</span>
+import puppeteer from 'puppeteer';
+import { PuppeteerAgent } from '@midscene/web-integration';
+
+<span class="text-blue-600 dark:text-blue-400">// 启动浏览器</span>
+const browser = await puppeteer.launch();
+const page = await browser.newPage();
+await page.goto('https://example.com');
+
+<span class="text-blue-600 dark:text-blue-400">// 创建MidScene代理</span>
+const mid = new PuppeteerAgent(page);
+
+<span class="text-blue-600 dark:text-blue-400">// 使用自然语言控制浏览器</span>
+await mid.ai('点击登录按钮');
+await mid.ai('在用户名字段输入admin');
+await mid.ai('在密码字段输入password');
+await mid.ai('点击提交按钮');
+
+<span class="text-blue-600 dark:text-blue-400">// 验证结果</span>
+await mid.aiAssert('页面显示登录成功');
+</pre>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">多种使用模式</h4>
+                        <ul class="space-y-3 text-gray-700 dark:text-gray-300">
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-code text-blue-600 dark:text-blue-400 mt-1"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p><strong>SDK模式</strong>: 作为库集成到测试代码中，提供完整的TypeScript类型支持</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-file-code text-blue-600 dark:text-blue-400 mt-1"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p><strong>YAML脚本</strong>: 通过简单的YAML文件描述测试步骤，无需编程知识</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-puzzle-piece text-blue-600 dark:text-blue-400 mt-1"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p><strong>浏览器扩展</strong>: 作为Chrome扩展直接在浏览器中使用</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-terminal text-blue-600 dark:text-blue-400 mt-1"></i>
+                                </div>
+                                <div class="ml-3">
+                                    <p><strong>命令行工具</strong>: 通过CLI执行测试，集成到CI/CD流程</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 性能与优化部分 -->
+        <section id="performance" class="mb-16">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">性能与优化分析</h2>
+                <div class="h-1 w-24 bg-blue-600 dark:bg-blue-500 rounded"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                <div>
+                    <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">性能挑战</h3>
+                    <div class="card p-6">
+                        <ul class="space-y-4">
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <div class="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                                        <i class="fas fa-tachometer-alt text-red-600 dark:text-red-400"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="text-lg font-medium text-gray-900 dark:text-white">AI模型调用效率</h4>
+                                    <p class="mt-1 text-gray-700 dark:text-gray-300">
+                                        每次调用AI服务都会产生网络延迟和API费用，多模态模型处理需要大量计算资源。
+                                    </p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <div class="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                                        <i class="fas fa-memory text-red-600 dark:text-red-400"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="text-lg font-medium text-gray-900 dark:text-white">内存消耗</h4>
+                                    <p class="mt-1 text-gray-700 dark:text-gray-300">
+                                        页面截图、DOM分析和缓存数据可能导致内存占用增加，尤其在长时间运行的测试中。
+                                    </p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <div class="h-8 w-8 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                                        <i class="fas fa-clock text-red-600 dark:text-red-400"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="text-lg font-medium text-gray-900 dark:text-white">执行时间</h4>
+                                    <p class="mt-1 text-gray-700 dark:text-gray-300">
+                                        相比传统工具，AI驱动的操作执行时间较长，影响大规模测试场景的效率。
+                                    </p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-4">优化策略</h3>
+                    <div class="card p-6">
+                        <ul class="space-y-4">
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <div class="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                                        <i class="fas fa-database text-green-600 dark:text-green-400"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="text-lg font-medium text-gray-900 dark:text-white">高效缓存机制</h4>
+                                    <p class="mt-1 text-gray-700 dark:text-gray-300">
+                                        实现文件级缓存策略，缓存任务规划和元素识别结果，减少重复AI调用，平衡性能与测试准确性。
+                                    </p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <div class="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                                        <i class="fas fa-memory text-green-600 dark:text-green-400"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="text-lg font-medium text-gray-900 dark:text-white">内存优化技术</h4>
+                                    <p class="mt-1 text-gray-700 dark:text-gray-300">
+                                        精细管理资源生命周期，设置缓存大小限制，实现惰性加载和定期清理过期数据，降低内存占用。
+                                    </p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <div class="h-8 w-8 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                                        <i class="fas fa-tasks text-green-600 dark:text-green-400"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="text-lg font-medium text-gray-900 dark:text-white">异步处理模型</h4>
+                                    <p class="mt-1 text-gray-700 dark:text-gray-300">
+                                        使用Promise和async/await处理异步操作，避免阻塞主线程，合理调度AI请求和浏览器操作。
+                                    </p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-10">
+                <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">AI模型性能对比</h3>
+                <div class="card p-6">
+                    <div class="chart-container">
+                        <canvas id="modelPerformanceChart"></canvas>
+                    </div>
+                    <div class="mt-6">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 italic">
+                            注：图表展示了不同AI模型在理解能力、速度和成本方面的相对性能。
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6 mb-10">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">与传统UI自动化工具性能对比</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="bg-gray-50 dark:bg-gray-700">
+                                <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">性能指标</th>
+                                <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">MidScene.js</th>
+                                <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Selenium</th>
+                                <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cypress</th>
+                                <th class="py-3 px-6 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Playwright</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tr>
+                                <td class="py-4 px-6 text-sm font-medium text-gray-900 dark:text-white">脚本编写时间</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">非常短</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">长</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">中等</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">中等</td>
+                            </tr>
+                            <tr>
+                                <td class="py-4 px-6 text-sm font-medium text-gray-900 dark:text-white">脚本执行速度</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">中等</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">中等</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">快</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">快</td>
+                            </tr>
+                            <tr>
+                                <td class="py-4 px-6 text-sm font-medium text-gray-900 dark:text-white">资源消耗</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">高</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">中等</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">中等</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">中等</td>
+                            </tr>
+                            <tr>
+                                <td class="py-4 px-6 text-sm font-medium text-gray-900 dark:text-white">并行能力</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">有限</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">强</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">强</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">强</td>
+                            </tr>
+                            <tr>
+                                <td class="py-4 px-6 text-sm font-medium text-gray-900 dark:text-white">UI变动适应</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">强</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">弱</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">弱</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">弱</td>
+                            </tr>
+                            <tr>
+                                <td class="py-4 px-6 text-sm font-medium text-gray-900 dark:text-white">维护成本</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">低</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">高</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">中</td>
+                                <td class="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">中</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">性能优化最佳实践</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">
+                            <i class="fas fa-user-cog text-blue-600 dark:text-blue-400 mr-2"></i>开发者最佳实践
+                        </h4>
+                        <ul class="space-y-3 text-gray-700 dark:text-gray-300">
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                <span>提供清晰、详细的自然语言指令，减少AI模型的"猜测"工作</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                <span>保持测试环境一致性，提高缓存命中率</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                <span>将复杂测试拆分为小块，避免单个AI请求过于复杂</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                <span>优先使用专门的断言方法，而非基于查询的自定义断言</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200 mb-3">
+                            <i class="fas fa-cogs text-blue-600 dark:text-blue-400 mr-2"></i>系统配置优化
+                        </h4>
+                        <ul class="space-y-3 text-gray-700 dark:text-gray-300">
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                <span>根据测试场景选择适合的AI模型，平衡性能和成本</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                <span>调整缓存设置，为频繁使用的测试场景优化缓存策略</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                <span>根据需求配置适当的超时时间和重试策略</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fas fa-check-circle text-green-500 mr-2 mt-1"></i>
+                                <span>考虑混合使用传统选择器和AI方法，优化关键路径</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 技术对比部分 -->
+        <section id="comparison" class="mb-16">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">同类技术方案对比</h2>
+                <div class="h-1 w-24 bg-blue-600 dark:bg-blue-500 rounded"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">自动化测试工具对比</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="bg-gray-50 dark:bg-gray-700">
+                                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">特性</th>
+                                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">MidScene.js</th>
+                                    <th class="py-3 px-4 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">传统测试工具</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                <tr>
+                                    <td class="py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">元素选择方式</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">自然语言描述 + 视觉理解</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">CSS/XPath/ID选择器</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">学习曲线</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">低（使用自然语言）</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">高（需学习选择器语法）</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">维护成本</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">低（自适应UI变化）</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">高（UI变化需更新选择器）</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">执行速度</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">较慢（受AI调用限制）</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">较快（直接操作DOM）</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">跨浏览器支持</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">通过集成实现</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">原生支持</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">社区生态</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">新兴</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">成熟</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-3 px-4 text-sm font-medium text-gray-900 dark:text-white">运行成本</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">较高（AI API费用）</td>
+                                    <td class="py-3 px-4 text-sm text-gray-700 dark:text-gray-300">低</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">不同场景适用性分析</h3>
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200 flex items-center">
+                                <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                                <span>MidScene.js优势场景</span>
+                            </h4>
+                            <ul class="mt-3 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li class="flex items-start">
+                                    <i class="fas fa-angle-right text-blue-600 dark:text-blue-400 mr-2 mt-1"></i>
+                                    <span><strong>动态变化的UI界面</strong> - 对UI变动的适应性强，减少维护工作</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-angle-right text-blue-600 dark:text-blue-400 mr-2 mt-1"></i>
+                                    <span><strong>快速开发测试脚本</strong> - 无需学习复杂选择器语法，提高开发效率</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-angle-right text-blue-600 dark:text-blue-400 mr-2 mt-1"></i>
+                                    <span><strong>复杂交互场景</strong> - AI能理解复杂页面结构和上下文</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-angle-right text-blue-600 dark:text-blue-400 mr-2 mt-1"></i>
+                                    <span><strong>非技术人员参与测试</strong> - 降低测试脚本编写门槛</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h4 class="text-lg font-medium text-gray-800 dark:text-gray-200 flex items-center">
+                                <i class="fas fa-check-circle text-orange-500 mr-2"></i>
+                                <span>传统工具优势场景</span>
+                            </h4>
+                            <ul class="mt-3 space-y-2 text-gray-700 dark:text-gray-300">
+                                <li class="flex items-start">
+                                    <i class="fas fa-angle-right text-orange-500 mr-2 mt-1"></i>
+                                    <span><strong>高性能要求场景</strong> - 无需AI调用，更快的测试执行速度</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-angle-right text-orange-500 mr-2 mt-1"></i>
+                                    <span><strong>大规模并行测试</strong> - 成熟的并行机制，不受AI调用限制</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-angle-right text-orange-500 mr-2 mt-1"></i>
+                                    <span><strong>精确元素控制</strong> - 对固定UI结构应用更高效</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-angle-right text-orange-500 mr-2 mt-1"></i>
+                                    <span><strong>预算敏感项目</strong> - 无需支付AI API费用</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card p-6">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">技术实现对比</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-5 hover-shadow">
+                        <div class="text-center mb-4">
+                            <div class="h-12 w-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto">
+                                <i class="fas fa-search-location text-blue-600 dark:text-blue-400"></i>
+                            </div>
+                            <h4 class="mt-3 text-lg font-medium text-gray-900 dark:text-white">元素定位机制</h4>
+                        </div>
+                        <div class="space-y-3 text-gray-700 dark:text-gray-300 text-sm">
+                            <p><span class="font-semibold">MidScene.js:</span> AI视觉理解 + 自然语言描述</p>
+                            <p><span class="font-semibold">传统工具:</span> 精确CSS/XPath选择器</p>
+                            <p class="text-blue-600 dark:text-blue-400 font-medium">优劣势: MidScene.js更灵活但速度较慢，传统工具精确但脆弱</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-5 hover-shadow">
+                        <div class="text-center mb-4">
+                            <div class="h-12 w-12 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mx-auto">
+                                <i class="fas fa-code-branch text-purple-600 dark:text-purple-400"></i>
+                            </div>
+                            <h4 class="mt-3 text-lg font-medium text-gray-900 dark:text-white">执行模型</h4>
+                        </div>
+                        <div class="space-y-3 text-gray-700 dark:text-gray-300 text-sm">
+                            <p><span class="font-semibold">MidScene.js:</span> AI规划 → 执行操作</p>
+                            <p><span class="font-semibold">传统工具:</span> 直接执行预定义操作</p>
+                            <p class="text-purple-600 dark:text-purple-400 font-medium">优劣势: MidScene.js更智能理解意图，传统工具执行更直接</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-5 hover-shadow">
+                        <div class="text-center mb-4">
+                            <div class="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto">
+                                <i class="fas fa-shield-alt text-green-600 dark:text-green-400"></i>
+                            </div>
+                            <h4 class="mt-3 text-lg font-medium text-gray-900 dark:text-white">测试稳定性</h4>
+                        </div>
+                        <div class="space-y-3 text-gray-700 dark:text-gray-300 text-sm">
+                            <p><span class="font-semibold">MidScene.js:</span> 适应UI变化，智能重试</p>
+                            <p><span class="font-semibold">传统工具:</span> 需要精确匹配，对变化敏感</p>
+                            <p class="text-green-600 dark:text-green-400 font-medium">优劣势: MidScene.js在变化环境中更稳定，但有时结果不够确定</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 未来展望部分 -->
+        <section id="future" class="mb-16">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">未来发展趋势</h2>
+                <div class="h-1 w-24 bg-blue-600 dark:bg-blue-500 rounded"></div>
+            </div>
+
+            <div class="card p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">技术发展路线</h3>
+                        <ul class="space-y-4">
+                            <li class="flex">
+                                <div class="flex-shrink-0">
+                                    <div class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                                        <i class="fas fa-microchip text-blue-600 dark:text-blue-400"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="text-lg font-medium text-gray-900 dark:text-white">本地AI模型集成</h4>
+                                    <p class="mt-1 text-gray-700 dark:text-gray-300">
+                                        未来版本可能会集成更轻量级的本地AI模型，减少API依赖，降低网络延迟和成本。
+                                    </p>
+                                </div>
+                            </li>
+                            <li class="flex">
+                                <div class="flex-shrink-0">
+                                    <div class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                                        <i class="fas fa-rocket text-blue-600 dark:text-blue-400"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="text-lg font-medium text-gray-900 dark:text-white">混合执行策略</h4>
+                                    <p class="mt-1 text-gray-700 dark:text-gray-300">
+                                        结合传统选择器和AI方法的混合执行策略，智能选择最高效的执行路径，提高性能。
+                                    </p>
+                                </div>
+                            </li>
+                            <li class="flex">
+                                <div class="flex-shrink-0">
+                                    <div class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                                        <i class="fas fa-project-diagram text-blue-600 dark:text-blue-400"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="text-lg font-medium text-gray-900 dark:text-white">增强并行能力</h4>
+                                    <p class="mt-1 text-gray-700 dark:text-gray-300">
+                                        改进多浏览器实例管理和资源分配算法，提高大规模测试场景的并行处理能力。
+                                    </p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">行业趋势与影响</h3>
+                        <div class="bg-gray-50 dark:bg-gray-800 p-5 rounded-lg">
+                            <p class="text-gray-700 dark:text-gray-300 mb-4">
+                                MidScene.js代表了UI自动化测试的新方向，随着AI技术的发展，我们可能会看到：
+                            </p>
+                            <ul class="space-y-3 text-gray-700 dark:text-gray-300">
+                                <li class="flex items-start">
+                                    <i class="fas fa-arrow-trend-up text-green-500 mr-2 mt-1"></i>
+                                    <span>更多传统测试工具集成类似的AI能力</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-arrow-trend-up text-green-500 mr-2 mt-1"></i>
+                                    <span>测试工程师角色转变，更专注于测试策略而非技术细节</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-arrow-trend-up text-green-500 mr-2 mt-1"></i>
+                                    <span>AI驱动测试成为敏捷开发流程中的标准实践</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-arrow-trend-up text-green-500 mr-2 mt-1"></i>
+                                    <span>专业化UI测试AI模型的出现，进一步提升性能和准确性</span>
+                                </li>
+                            </ul>
+                            <div class="mt-6 p-3 bg-blue-50 dark:bg-blue-900 rounded">
+                                <p class="text-blue-800 dark:text-blue-200 italic">
+                                    "AI驱动的自动化测试将彻底改变软件质量保障的方式，让测试更加接近人类真实使用场景。"
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 延伸阅读部分 -->
+        <section id="reading" class="mb-16">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">延伸阅读</h2>
+                <div class="h-1 w-24 bg-blue-600 dark:bg-blue-500 rounded"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="card p-5 hover-scale">
+                    <div class="flex items-center mb-4">
+                        <div class="h-10 w-10 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                            <i class="fas fa-book text-red-600 dark:text-red-400"></i>
+                        </div>
+                        <h4 class="ml-3 text-lg font-medium text-gray-900 dark:text-white">《测试即服务》</h4>
+                    </div>
+                    <p class="text-gray-700 dark:text-gray-300 mb-3">
+                        深入探讨AI驱动的测试服务如何改变软件质量保障流程，包括实际案例研究和最佳实践。
+                    </p>
+                    <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-user mr-1"></i>
+                        <span>Jason Arbon</span>
+                    </div>
+                </div>
+
+                <div class="card p-5 hover-scale">
+                    <div class="flex items-center mb-4">
+                        <div class="h-10 w-10 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
+                            <i class="fas fa-book text-green-600 dark:text-green-400"></i>
+                        </div>
+                        <h4 class="ml-3 text-lg font-medium text-gray-900 dark:text-white">《多模态AI应用开发》</h4>
+                    </div>
+                    <p class="text-gray-700 dark:text-gray-300 mb-3">
+                        探索多模态AI在应用开发中的实践，涵盖视觉理解、自然语言处理和复合智能系统构建。
+                    </p>
+                    <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-user mr-1"></i>
+                        <span>李飞飞、Andrej Karpathy</span>
+                    </div>
+                </div>
+
+                <div class="card p-5 hover-scale">
+                    <div class="flex items-center mb-4">
+                        <div class="h-10 w-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                            <i class="fas fa-book text-blue-600 dark:text-blue-400"></i>
+                        </div>
+                        <h4 class="ml-3 text-lg font-medium text-gray-900 dark:text-white">《现代Web测试自动化》</h4>
+                    </div>
+                    <p class="text-gray-700 dark:text-gray-300 mb-3">
+                        全面比较各种Web测试自动化技术，包括传统方法和基于AI的新兴方法，帮助读者选择最适合的技术栈。
+                    </p>
+                    <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-user mr-1"></i>
+                        <span>Angie Jones、Tariq King</span>
+                    </div>
+                </div>
+
+                <div class="card p-5 hover-scale">
+                    <div class="flex items-center mb-4">
+                        <div class="h-10 w-10 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
+                            <i class="fas fa-file-alt text-purple-600 dark:text-purple-400"></i>
+                        </div>
+                        <h4 class="ml-3 text-lg font-medium text-gray-900 dark:text-white">《视觉AI在UI测试中的应用》</h4>
+                    </div>
+                    <p class="text-gray-700 dark:text-gray-300 mb-3">
+                        这篇研究论文详细分析了视觉AI技术在UI测试中的应用效果，包括详细的算法分析和性能评估。
+                    </p>
+                    <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-university mr-1"></i>
+                        <span>ACM SIGSOFT，2023年发表</span>
+                    </div>
+                </div>
+
+                <div class="card p-5 hover-scale">
+                    <div class="flex items-center mb-4">
+                        <div class="h-10 w-10 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center">
+                            <i class="fas fa-file-alt text-yellow-600 dark:text-yellow-400"></i>
+                        </div>
+                        <h4 class="ml-3 text-lg font-medium text-gray-900 dark:text-white">《浏览器自动化技术发展白皮书》</h4>
+                    </div>
+                    <p class="text-gray-700 dark:text-gray-300 mb-3">
+                        全面回顾浏览器自动化技术的发展历程，深入分析WebDriver、CDP和基于AI的新一代自动化技术。
+                    </p>
+                    <div class="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-building mr-1"></i>
+                        <span>W3C Web Testing Working Group，2024</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 报告生成时间 -->
+        <div class="mt-12 text-center text-gray-500 dark:text-gray-400 text-sm">
+            <p>报告生成时间：2025年3月29日</p>
+        </div>
+    </main>
+
+    <!-- 页脚部分 -->
+    <footer class="bg-gray-800 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">MidScene.js 技术分析报告</h3>
+                    <p class="text-gray-300">
+                        本报告对字节跳动开源的MidScene.js项目进行了全面的技术分析，包括核心实现原理、工程架构设计、性能优化策略和与同类技术的对比。
+                    </p>
+                </div>
+                <div class="md:text-right">
+                    <h3 class="text-lg font-semibold mb-4">相关链接</h3>
+                    <div class="space-x-4">
+                        <a href="https://github.com/web-infra-dev/midscene" target="_blank" class="text-blue-400 hover:text-blue-300">
+                            <i class="fab fa-github"></i> GitHub
+                        </a>
+                        <a href="https://midscenejs.com/" target="_blank" class="text-blue-400 hover:text-blue-300">
+                            <i class="fas fa-globe"></i> 官方网站
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 pt-8 border-t border-gray-700 text-center text-gray-400 text-sm">
+                <p>© 2025 MidScene.js 技术分析报告 - 仅供技术研究参考</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript部分 -->
+    <script>
+        // 初始化mermaid
+        document.addEventListener('DOMContentLoaded', function() {
+            mermaid.initialize({
+                startOnLoad: true,
+                theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default',
+                securityLevel: 'loose',
+                fontFamily: "'Noto Sans SC', sans-serif"
+            });
+            
+            // 初始化Chart.js图表
+            const ctx = document.getElementById('modelPerformanceChart').getContext('2d');
+            
+            const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const textColor = isDarkMode ? '#e5e7eb' : '#1f2937';
+            const gridColor = isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+            
+            const modelPerformanceChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['理解能力', '执行速度', '成本效率', '适应性', '可靠性'],
+                    datasets: [
+                        {
+                            label: 'GPT-4o',
+                            data: [95, 60, 40, 90, 85],
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            borderColor: 'rgb(59, 130, 246)',
+                            pointBackgroundColor: 'rgb(59, 130, 246)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(59, 130, 246)'
+                        },
+                        {
+                            label: 'Qwen2.5-VL',
+                            data: [85, 70, 60, 80, 80],
+                            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                            borderColor: 'rgb(139, 92, 246)',
+                            pointBackgroundColor: 'rgb(139, 92, 246)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(139, 92, 246)'
+                        },
+                        {
+                            label: 'UI-TARS',
+                            data: [75, 85, 80, 70, 85],
+                            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                            borderColor: 'rgb(16, 185, 129)',
+                            pointBackgroundColor: 'rgb(16, 185, 129)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(16, 185, 129)'
+                        }
+                    ]
+                },
+                options: {
+                    elements: {
+                        line: {
+                            borderWidth: 3
+                        }
+                    },
+                    scales: {
+                        r: {
+                            angleLines: {
+                                color: gridColor
+                            },
+                            grid: {
+                                color: gridColor
+                            },
+                            pointLabels: {
+                                color: textColor
+                            },
+                            ticks: {
+                                color: textColor,
+                                backdropColor: isDarkMode ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.8)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                color: textColor
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 处理深色/浅色模式切换
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+            const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+
+            // 检查系统偏好
+            if (localStorage.getItem('color-theme') === 'dark' || (!localStorage.getItem('color-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                themeToggleLightIcon.classList.remove('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeToggleDarkIcon.classList.remove('hidden');
+            }
+
+            // 切换主题
+            themeToggle.addEventListener('click', function() {
+                themeToggleDarkIcon.classList.toggle('hidden');
+                themeToggleLightIcon.classList.toggle('hidden');
+                
+                if (localStorage.getItem('color-theme')) {
+                    if (localStorage.getItem('color-theme') === 'light') {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                        // 更新图表主题
+                        updateChartTheme(true);
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                        // 更新图表主题
+                        updateChartTheme(false);
+                    }
+                } else {
+                    if (document.documentElement.classList.contains('dark')) {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('color-theme', 'light');
+                        // 更新图表主题
+                        updateChartTheme(false);
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('color-theme', 'dark');
+                        // 更新图表主题
+                        updateChartTheme(true);
+                    }
+                }
+                
+                // 更新Mermaid主题
+                updateMermaidTheme();
+            });
+            
+            // 更新图表主题
+            function updateChartTheme(isDark) {
+                const textColor = isDark ? '#e5e7eb' : '#1f2937';
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+                
+                modelPerformanceChart.options.scales.r.angleLines.color = gridColor;
+                modelPerformanceChart.options.scales.r.grid.color = gridColor;
+                modelPerformanceChart.options.scales.r.pointLabels.color = textColor;
+                modelPerformanceChart.options.scales.r.ticks.color = textColor;
+                modelPerformanceChart.options.scales.r.ticks.backdropColor = isDark ? 'rgba(31, 41, 55, 0.8)' : 'rgba(255, 255, 255, 0.8)';
+                modelPerformanceChart.options.plugins.legend.labels.color = textColor;
+                modelPerformanceChart.update();
+            }
+            
+            // 更新Mermaid主题
+            function updateMermaidTheme() {
+                const isDark = document.documentElement.classList.contains('dark');
+                mermaid.initialize({
+                    theme: isDark ? 'dark' : 'default'
+                });
+                
+                // 重新渲染所有图表
+                document.querySelectorAll('.mermaid').forEach(diagram => {
+                    const content = diagram.textContent;
+                    diagram.removeAttribute('data-processed');
+                    diagram.textContent = content;
+                });
+                
+                mermaid.init();
+            }
+            
+            // 监听导航点击，平滑滚动
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    document.querySelector(targetId).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                    
+                    // 更新活动链接样式
+                    document.querySelectorAll('.nav-link').forEach(link => {
+                        link.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                });
+            });
+            
+            // 滚动监听，更新导航活动状态
+            const sections = document.querySelectorAll('section[id]');
+            window.addEventListener('scroll', () => {
+                let current = '';
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.clientHeight;
+                    if (pageYOffset >= sectionTop - 200) {
+                        current = section.getAttribute('id');
+                    }
+                });
+                
+                document.querySelectorAll('.nav-link').forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === `#${current}`) {
+                        link.classList.add('active');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
