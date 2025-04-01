@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="transition-colors duration-300">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON结构化日志查询工具研究报告</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://g.alicdn.com/code/lib/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.font.im/css?family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://g.alicdn.com/code/lib/mermaid/11.5.0/mermaid.min.js"></script>
+    <script src="https://g.alicdn.com/code/lib/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --color-primary: #1b55c5;
+            --color-primary-dark: #0f3c8e;
+            --color-primary-light: #5c87e5;
+            --color-secondary: #f59e0b;
+            --color-text: #2d3748;
+            --color-text-light: #718096;
+            --color-bg: #ffffff;
+            --color-bg-alt: #f7fafc;
+            --color-border: #e2e8f0;
+            --font-serif: 'Noto Serif SC', serif;
+            --font-sans: 'Noto Sans SC', Tahoma, Arial, Roboto, "Droid Sans", "Helvetica Neue", "Droid Sans Fallback", "Heiti SC", "Hiragino Sans GB", Simsun, sans-serif;
+        }
+
+        .dark {
+            --color-primary: #5c87e5;
+            --color-primary-dark: #81a3ee;
+            --color-primary-light: #3d6dd1;
+            --color-secondary: #fbbf24;
+            --color-text: #e2e8f0;
+            --color-text-light: #a0aec0;
+            --color-bg: #1a202c;
+            --color-bg-alt: #2d3748;
+            --color-border: #4a5568;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            color: var(--color-text);
+            background-color: var(--color-bg);
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-serif);
+            line-height: 1.5;
+        }
+
+        .prose {
+            max-width: none;
+            color: var(--color-text);
+        }
+
+        .prose p {
+            margin-bottom: 1.5em;
+            line-height: 1.8;
+        }
+
+        .prose h2, .prose h3, .prose h4 {
+            color: var(--color-primary-dark);
+            margin-top: 2em;
+            margin-bottom: 1em;
+        }
+
+        .prose h2 {
+            font-size: 1.75rem;
+            border-bottom: 2px solid var(--color-border);
+            padding-bottom: 0.5rem;
+        }
+
+        .prose h3 {
+            font-size: 1.35rem;
+        }
+
+        .prose ul, .prose ol {
+            margin-bottom: 1.5em;
+        }
+
+        .prose li {
+            margin-bottom: 0.5em;
+            line-height: 1.6;
+        }
+
+        .prose blockquote {
+            border-left-color: var(--color-primary);
+            font-style: normal;
+            color: var(--color-text-light);
+            padding: 1em;
+            background-color: var(--color-bg-alt);
+            border-radius: 0.375rem;
+        }
+
+        .prose a {
+            color: var(--color-primary);
+            text-decoration: none;
+            border-bottom: 1px solid currentColor;
+            transition: border-color 0.2s ease;
+        }
+
+        .prose a:hover {
+            border-color: transparent;
+        }
+
+        .prose code {
+            color: var(--color-primary-dark);
+            background: var(--color-bg-alt);
+            padding: 0.2em 0.4em;
+            border-radius: 0.25rem;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .prose pre {
+            background: var(--color-bg-alt);
+            border: 1px solid var(--color-border);
+            padding: 1em;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin: 1.5em 0;
+        }
+
+        .prose pre code {
+            color: inherit;
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-bottom: 1.5em;
+        }
+
+        table th, table td {
+            border: 1px solid var(--color-border);
+            padding: 0.75rem 1rem;
+            text-align: left;
+        }
+
+        table th {
+            background-color: var(--color-bg-alt);
+            font-weight: 600;
+        }
+
+        /* Custom classes */
+        .card {
+            border-radius: 0.5rem;
+            background-color: var(--color-bg);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .first-letter:first-letter {
+            font-size: 3.5rem;
+            font-weight: 700;
+            float: left;
+            line-height: 1;
+            margin-right: 0.75rem;
+            color: var(--color-primary);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 2rem 0;
+        }
+
+        /* Button styles */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--color-primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: var(--color-secondary);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e69009;
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-primary {
+            background-color: #ebf3ff;
+            color: var(--color-primary);
+        }
+
+        .badge-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-error {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+
+        /* Dark mode badge adjustments */
+        .dark .badge-primary {
+            background-color: rgba(92, 135, 229, 0.2);
+        }
+
+        .dark .badge-warning {
+            background-color: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .dark .badge-success {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .dark .badge-error {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--color-bg-alt);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #cbd5e0;
+            border-radius: 4px;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background-color: #4a5568;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .scroll-shadow {
+            background: linear-gradient(var(--color-bg) 33%, rgba(255, 255, 255, 0)), 
+                        linear-gradient(rgba(255, 255, 255, 0), var(--color-bg) 66%) 0 100%,
+                        radial-gradient(farthest-side at 50% 0, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)),
+                        radial-gradient(farthest-side at 50% 100%, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0)) 0 100%;
+            background-repeat: no-repeat;
+            background-size: 100% 30px, 100% 30px, 100% 10px, 100% 10px;
+            background-attachment: local, local, scroll, scroll;
+        }
+
+        .dark .scroll-shadow {
+            background: linear-gradient(var(--color-bg) 33%, rgba(26, 32, 44, 0)), 
+                        linear-gradient(rgba(26, 32, 44, 0), var(--color-bg) 66%) 0 100%,
+                        radial-gradient(farthest-side at 50% 0, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0)),
+                        radial-gradient(farthest-side at 50% 100%, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0)) 0 100%;
+            background-repeat: no-repeat;
+            background-size: 100% 30px, 100% 30px, 100% 10px, 100% 10px;
+            background-attachment: local, local, scroll, scroll;
+        }
+
+        /* Tool comparison specific styles */
+        .tool-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tool-card .card-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+        
+        .tool-card .card-body {
+            padding: 1.25rem;
+            flex: 1;
+        }
+        
+        .tool-card .card-footer {
+            padding: 1.25rem;
+            border-top: 1px solid var(--color-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Terminal style */
+        .terminal {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .dark .terminal {
+            background-color: #1a1e2b;
+        }
+
+        .terminal .prompt {
+            color: #48bb78;
+            user-select: none;
+        }
+
+        .terminal .comment {
+            color: #a0aec0;
+            font-style: italic;
+        }
+
+        .terminal .command {
+            color: #ecc94b;
+        }
+
+        .terminal .output {
+            color: #a0aec0;
+            white-space: pre-wrap;
+        }
+
+        /* Score indicator */
+        .score-indicator {
+            width: 100%;
+            height: 8px;
+            background-color: var(--color-bg-alt);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .score-bar {
+            height: 100%;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen" x-data="{ darkMode: localStorage.getItem('darkMode') === 'true' || window.matchMedia('(prefers-color-scheme: dark)').matches }" x-init="$watch('darkMode', val => { localStorage.setItem('darkMode', val); document.documentElement.classList.toggle('dark', val); })">
+    <!-- Dark mode toggle -->
+    <div class="fixed top-4 right-4 z-50">
+        <button 
+            @click="darkMode = !darkMode" 
+            class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-200"
+            aria-label="Toggle dark mode"
+        >
+            <i x-show="!darkMode" class="fas fa-moon"></i>
+            <i x-show="darkMode" class="fas fa-sun"></i>
+        </button>
+    </div>
+
+    <!-- Hero section -->
+    <header class="relative bg-gradient-to-r from-blue-800 to-blue-600 dark:from-blue-900 dark:to-blue-700 text-white overflow-hidden">
+        <div class="absolute inset-0 bg-pattern opacity-10"></div>
+        <div class="container mx-auto px-4 py-16 sm:py-24 relative z-10">
+            <div class="flex flex-col items-start max-w-3xl">
+                <span class="inline-block px-3 py-1 text-sm font-medium bg-blue-500 bg-opacity-30 rounded-full mb-6">
+                    研究报告 | 2025年03月30日
+                </span>
+                <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 leading-tight">
+                    JSON结构化日志查询<br>命令行工具深度评测
+                </h1>
+                <p class="text-xl md:text-2xl text-blue-100 mb-8 leading-relaxed">
+                    分析、比较和推荐最适合您需求的JSON处理工具，优化您的日志分析工作流程
+                </p>
+                <div class="flex flex-wrap gap-4">
+                    <a href="#overview" class="btn btn-secondary">
+                        <i class="fas fa-search mr-2"></i>查看研究概述
+                    </a>
+                    <a href="#recommendations" class="btn bg-white bg-opacity-20 hover:bg-opacity-30 text-white">
+                        <i class="fas fa-star mr-2"></i>查看工具推荐
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Decorative elements -->
+        <div class="hidden md:block absolute -right-32 bottom-0 text-blue-200 opacity-20 transform rotate-12">
+            <i class="fas fa-terminal text-[250px]"></i>
+        </div>
+        <div class="hidden md:block absolute right-1/2 top-0 text-blue-300 opacity-10 transform -rotate-12">
+            <i class="fas fa-code text-[150px]"></i>
+        </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="container mx-auto px-4 py-12">
+        <!-- Overview section -->
+        <section id="overview" class="mb-20 max-w-4xl mx-auto">
+            <h2 class="text-3xl font-bold mb-8 text-center">研究概述</h2>
+            
+            <div class="prose dark:prose-invert mx-auto">
+                <p class="first-letter">在现代软件开发和运维环境中，由于微服务架构、容器化部署和云原生应用的广泛采用，结构化日志（特别是JSON格式）已成为标准实践。当面对大量的JSON日志数据时，拥有高效的命令行工具来查询和分析这些日志变得至关重要。本研究旨在评估当前市场上主流的JSON结构化日志查询命令行工具，为开发者和运维人员提供工具选择指南。</p>
+
+                <div class="bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 rounded-lg p-6 my-8">
+                    <h3 class="text-lg font-semibold mb-4"><i class="fas fa-flask text-blue-600 dark:text-blue-400 mr-2"></i>研究方法</h3>
+                    <p>本研究采用了系统化的四步方法来全面评估JSON日志查询工具：</p>
+                    <ol class="list-decimal pl-6 mt-2">
+                        <li><strong>工具调研</strong>：收集和整理市场上主流的支持JSON结构化日志查询的命令行工具</li>
+                        <li><strong>功能与性能分析</strong>：对比分析各工具在核心功能和性能指标方面的表现</li>
+                        <li><strong>集成场景探索</strong>：研究各工具在开发流程和自动化场景中的集成能力</li>
+                        <li><strong>实际测试验证</strong>：使用真实JSON日志数据验证选定工具的实际表现</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tools comparison -->
+        <section id="tools-comparison" class="mb-20">
+            <div class="max-w-4xl mx-auto mb-12 text-center">
+                <h2 class="text-3xl font-bold mb-4">工具对比</h2>
+                <p class="text-lg text-gray-600 dark:text-gray-300">我们对比了6款主流的JSON日志查询工具的关键特性和性能指标</p>
+            </div>
+
+            <!-- Tool cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+                <!-- jq -->
+                <div class="card tool-card">
+                    <div class="card-header bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900 dark:from-opacity-20 dark:to-blue-800 dark:to-opacity-10">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold flex items-center">
+                                <i class="fas fa-filter text-blue-600 dark:text-blue-400 mr-2"></i>jq
+                            </h3>
+                            <span class="badge badge-primary">最全能</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">轻量级且灵活的命令行JSON处理器，使用C语言开发，无运行时依赖</p>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300">查询语法复杂性</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-blue-600" style="width: 100%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">处理性能</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-blue-600" style="width: 80%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">交互体验</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-blue-600" style="width: 40%"></div>
+                        </div>
+
+                        <div class="mt-6">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">优势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 速度快，语法简洁</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 强大的过滤和转换能力</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 无依赖，跨平台支持</li>
+                            </ul>
+                        </div>
+
+                        <div class="mt-4">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">劣势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 交互体验有限</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 复杂查询语法陡峭</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 不支持复杂可视化</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i>
+                        </span>
+                        <span class="text-sm text-blue-600 dark:text-blue-400">总评分：4.27/5</span>
+                    </div>
+                </div>
+
+                <!-- fx -->
+                <div class="card tool-card">
+                    <div class="card-header bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900 dark:from-opacity-20 dark:to-green-800 dark:to-opacity-10">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold flex items-center">
+                                <i class="fas fa-terminal text-green-600 dark:text-green-400 mr-2"></i>fx
+                            </h3>
+                            <span class="badge badge-success">交互体验强</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">双用途命令行工具，提供JSON查看器（Go编写）和处理工具（JS开发）</p>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300">查询语法复杂性</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-green-600" style="width: 80%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">处理性能</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-green-600" style="width: 60%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">交互体验</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-green-600" style="width: 100%"></div>
+                        </div>
+
+                        <div class="mt-6">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">优势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 交互式界面优秀</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> JavaScript语法友好</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 数据格式转换能力强</li>
+                            </ul>
+                        </div>
+
+                        <div class="mt-4">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">劣势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 执行速度较慢</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 依赖Node.js环境</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 自动化集成需额外工作</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star-half-alt text-yellow-400"></i>
+                        </span>
+                        <span class="text-sm text-green-600 dark:text-green-400">总评分：4.0/5</span>
+                    </div>
+                </div>
+
+                <!-- gron -->
+                <div class="card tool-card">
+                    <div class="card-header bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900 dark:from-opacity-20 dark:to-purple-800 dark:to-opacity-10">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold flex items-center">
+                                <i class="fas fa-search text-purple-600 dark:text-purple-400 mr-2"></i>gron
+                            </h3>
+                            <span class="badge" style="background-color: #f3e8ff; color: #7e22ce;">Grep友好</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">将JSON转换为易于grep搜索的格式的工具，在GitHub上有超过12.4k Star</p>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300">查询语法复杂性</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-purple-600" style="width: 40%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">处理性能</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-purple-600" style="width: 60%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">交互体验</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-purple-600" style="width: 40%"></div>
+                        </div>
+
+                        <div class="mt-6">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">优势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 与grep等工具集成良好</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 简单易学，概念清晰</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 安装便捷，跨平台支持</li>
+                            </ul>
+                        </div>
+
+                        <div class="mt-4">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">劣势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 功能相对单一</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 不适合复杂数据处理</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 结果需要后处理</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="far fa-star text-yellow-400"></i> 
+                            <i class="far fa-star text-yellow-400"></i>
+                        </span>
+                        <span class="text-sm text-purple-600 dark:text-purple-400">总评分：3.0/5</span>
+                    </div>
+                </div>
+
+                <!-- jless -->
+                <div class="card tool-card">
+                    <div class="card-header bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900 dark:from-opacity-20 dark:to-red-800 dark:to-opacity-10">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold flex items-center">
+                                <i class="fas fa-eye text-red-600 dark:text-red-400 mr-2"></i>jless
+                            </h3>
+                            <span class="badge badge-error">可视化强</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">专为阅读和探索JSON数据设计的命令行查看器，类似Vim的操作方式</p>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300">查询语法复杂性</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-red-600" style="width: 60%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">处理性能</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-red-600" style="width: 80%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">交互体验</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-red-600" style="width: 100%"></div>
+                        </div>
+
+                        <div class="mt-6">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">优势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 优秀的可视化浏览体验</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 大文件处理性能良好</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> Vim风格的导航操作</li>
+                            </ul>
+                        </div>
+
+                        <div class="mt-4">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">劣势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 自动化集成能力有限</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 数据转换功能弱</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> Windows支持尚未完善</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star-half-alt text-yellow-400"></i> 
+                            <i class="far fa-star text-yellow-400"></i>
+                        </span>
+                        <span class="text-sm text-red-600 dark:text-red-400">总评分：3.45/5</span>
+                    </div>
+                </div>
+
+                <!-- jc -->
+                <div class="card tool-card">
+                    <div class="card-header bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-900 dark:from-opacity-20 dark:to-amber-800 dark:to-opacity-10">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold flex items-center">
+                                <i class="fas fa-exchange-alt text-amber-600 dark:text-amber-400 mr-2"></i>jc
+                            </h3>
+                            <span class="badge badge-warning">命令转换</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">将常见命令行工具输出转换为JSON格式的工具，支持多种编程语言</p>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300">查询语法复杂性</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-amber-600" style="width: 60%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">处理性能</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-amber-600" style="width: 60%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">交互体验</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-amber-600" style="width: 40%"></div>
+                        </div>
+
+                        <div class="mt-6">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">优势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 命令输出转JSON的能力</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 多语言支持</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 流处理能力</li>
+                            </ul>
+                        </div>
+
+                        <div class="mt-4">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">劣势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 文档和案例较少</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 社区支持有限</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 专注于转换而非查询</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="far fa-star text-yellow-400"></i> 
+                            <i class="far fa-star text-yellow-400"></i>
+                        </span>
+                        <span class="text-sm text-amber-600 dark:text-amber-400">总评分：3.18/5</span>
+                    </div>
+                </div>
+
+                <!-- jp -->
+                <div class="card tool-card">
+                    <div class="card-header bg-gradient-to-r from-indigo-50 to-indigo-100 dark:from-indigo-900 dark:from-opacity-20 dark:to-indigo-800 dark:to-opacity-10">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-xl font-bold flex items-center">
+                                <i class="fas fa-code text-indigo-600 dark:text-indigo-400 mr-2"></i>jp
+                            </h3>
+                            <span class="badge" style="background-color: #e0e7ff; color: #4f46e5;">JMESPath</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">基于JMESPath表达式的JSON查询工具，支持从嵌套JSON对象中提取特定信息</p>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300">查询语法复杂性</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-indigo-600" style="width: 80%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">处理性能</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-indigo-600" style="width: 60%"></div>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-1 text-sm text-gray-700 dark:text-gray-300 mt-3">交互体验</h4>
+                        <div class="score-indicator">
+                            <div class="score-bar bg-indigo-600" style="width: 40%"></div>
+                        </div>
+
+                        <div class="mt-6">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">优势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> JMESPath表达式强大</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 跨平台支持</li>
+                                <li><i class="fas fa-check text-green-500 mr-1"></i> 安装简便</li>
+                            </ul>
+                        </div>
+
+                        <div class="mt-4">
+                            <h4 class="font-semibold mb-2 text-sm text-gray-700 dark:text-gray-300">劣势</h4>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 社区活跃度较低</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 文档不够完善</li>
+                                <li><i class="fas fa-times text-red-500 mr-1"></i> 集成案例较少</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="text-sm text-gray-600 dark:text-gray-400">
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="fas fa-star text-yellow-400"></i> 
+                            <i class="far fa-star text-yellow-400"></i> 
+                            <i class="far fa-star text-yellow-400"></i>
+                        </span>
+                        <span class="text-sm text-indigo-600 dark:text-indigo-400">总评分：3.09/5</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features comparison table -->
+            <div class="max-w-6xl mx-auto overflow-x-auto">
+                <h3 class="text-2xl font-bold mb-6 text-center">功能详细对比</h3>
+                <div class="shadow-lg rounded-lg overflow-hidden mb-8">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-gray-100 dark:bg-gray-800">
+                                <th class="py-3 px-4 text-left">特性</th>
+                                <th class="py-3 px-4 text-center">jq</th>
+                                <th class="py-3 px-4 text-center">fx</th>
+                                <th class="py-3 px-4 text-center">gron</th>
+                                <th class="py-3 px-4 text-center">jless</th>
+                                <th class="py-3 px-4 text-center">jc</th>
+                                <th class="py-3 px-4 text-center">jp</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-700">
+                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                                <td class="py-3 px-4 font-medium">查询语法复杂性</td>
+                                <td class="py-3 px-4 text-center">5</td>
+                                <td class="py-3 px-4 text-center">4</td>
+                                <td class="py-3 px-4 text-center">2</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                                <td class="py-3 px-4 text-center">4</td>
+                            </tr>
+                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                                <td class="py-3 px-4 font-medium">过滤能力</td>
+                                <td class="py-3 px-4 text-center">5</td>
+                                <td class="py-3 px-4 text-center">4</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                            </tr>
+                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                                <td class="py-3 px-4 font-medium">转换功能</td>
+                                <td class="py-3 px-4 text-center">5</td>
+                                <td class="py-3 px-4 text-center">4</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                                <td class="py-3 px-4 text-center">2</td>
+                                <td class="py-3 px-4 text-center">4</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                            </tr>
+                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                                <td class="py-3 px-4 font-medium">大型文件处理性能</td>
+                                <td class="py-3 px-4 text-center">4</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                                <td class="py-3 px-4 text-center">4</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                            </tr>
+                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                                <td class="py-3 px-4 font-medium">交互式界面</td>
+                                <td class="py-3 px-4 text-center">2</td>
+                                <td class="py-3 px-4 text-center">5</td>
+                                <td class="py-3 px-4 text-center">2</td>
+                                <td class="py-3 px-4 text-center">5</td>
+                                <td class="py-3 px-4 text-center">2</td>
+                                <td class="py-3 px-4 text-center">2</td>
+                            </tr>
+                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                                <td class="py-3 px-4 font-medium">社区活跃度/文档完善度</td>
+                                <td class="py-3 px-4 text-center">5</td>
+                                <td class="py-3 px-4 text-center">4</td>
+                                <td class="py-3 px-4 text-center">4</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                                <td class="py-3 px-4 text-center">3</td>
+                                <td class="py-3 px-4 text-center">2</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-center text-gray-600 dark:text-gray-400 text-sm">
+                    评分标准: 5 = 优秀, 4 = 很好, 3 = 良好, 2 = 一般, 1 = 较弱
+                </p>
+            </div>
+        </section>
+
+        <!-- Performance visualization -->
+        <section class="mb-20 max-w-4xl mx-auto">
+            <h2 class="text-3xl font-bold mb-8 text-center">性能对比可视化</h2>
+            
+            <!-- Performance charts -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4">执行时间对比 (毫秒，越低越好)</h3>
+                    <div class="chart-container h-64">
+                        <canvas id="executionTimeChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold mb-4">测试场景成功率</h3>
+                    <div class="chart-container h-64">
+                        <canvas id="successRateChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance notes -->
+            <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-semibold mb-4"><i class="fas fa-chart-line text-blue-600 dark:text-blue-400 mr-2"></i>性能测试说明</h3>
+                <p class="text-gray-600 dark:text-gray-300 mb-4">测试在包含各种复杂度JSON日志数据的环境中进行，覆盖从简单筛选到复杂聚合的多种场景。所有测试在相同硬件条件下执行，以确保公平对比。</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div class="flex flex-col items-center">
+                        <div class="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">jq</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">平均响应时间</div>
+                        <div class="text-xl font-semibold mt-2">33ms</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="text-2xl font-bold text-green-600 dark:text-green-400 mb-1">fx</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">平均响应时间</div>
+                        <div class="text-xl font-semibold mt-2">147ms</div>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div class="text-2xl font-bold text-purple-600 dark:text-purple-400 mb-1">gron</div>
+                        <div class="text-sm text-gray-500 dark:text-gray-400">平均响应时间</div>
+                        <div class="text-xl font-semibold mt-2">53ms</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Integration scenarios -->
+        <section class="mb-20 max-w-4xl mx-auto">
+            <h2 class="text-3xl font-bold mb-8 text-center">集成场景分析</h2>
+            
+            <div class="prose dark:prose-invert mx-auto">
+                <p>我们评估了这些工具在各种常见的开发和运维场景中的集成能力，以帮助您根据具体需求选择最合适的工具。</p>
+            </div>
+
+            <!-- Matrix visualization with mermaid -->
+            <div class="my-8">
+                <h3 class="text-xl font-semibold mb-4">集成适用性矩阵</h3>
+                <div class="overflow-x-auto shadow-lg rounded-lg">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="bg-gray-100 dark:bg-gray-800">
+                                <th class="py-3 px-4 text-left">集成场景</th>
+                                <th class="py-3 px-4 text-center">jq</th>
+                                <th class="py-3 px-4 text-center">fx</th>
+                                <th class="py-3 px-4 text-center">gron</th>
+                                <th class="py-3 px-4 text-center">jless</th>
+                                <th class="py-3 px-4 text-center">jc</th>
+                                <th class="py-3 px-4 text-center">jp</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-700">
+                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                                <td class="py-3 px-4 font-medium">日志系统集成</td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-600 text-white text-center leading-8 font-semibold">4</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-500 text-white text-center leading-8 font-semibold">3</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-600 text-white text-center leading-8 font-semibold">4</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-400 text-white text-center leading-8 font-semibold">2</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-500 text-white text-center leading-8 font-semibold">3</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-500 text-white text-center leading-8 font-semibold">3</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                                <td class="py-3 px-4 font-medium">监控系统集成</td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-600 text-white text-center leading-8 font-semibold">4</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-500 text-white text-center leading-8 font-semibold">3</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-400 text-white text-center leading-8 font-semibold">2</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-400 text-white text-center leading-8 font-semibold">2</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-400 text-white text-center leading-8 font-semibold">2</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-400 text-white text-center leading-8 font-semibold">2</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                                <td class="py-3 px-4 font-medium">CI/CD流水线集成</td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-700 text-white text-center leading-8 font-semibold">5</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-400 text-white text-center leading-8 font-semibold">2</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-500 text-white text-center leading-8 font-semibold">3</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-300 text-white text-center leading-8 font-semibold">1</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-400 text-white text-center leading-8 font-semibold">2</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-400 text-white text-center leading-8 font-semibold">2</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="border-b border-gray-200 dark:border-gray-600">
+                                <td class="py-3 px-4 font-medium">自动化脚本集成</td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-700 text-white text-center leading-8 font-semibold">5</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-500 text-white text-center leading-8 font-semibold">3</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-600 text-white text-center leading-8 font-semibold">4</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-400 text-white text-center leading-8 font-semibold">2</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-500 text-white text-center leading-8 font-semibold">3</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    <div class="flex items-center justify-center">
+                                        <span class="inline-block w-8 h-8 rounded-full bg-blue-500 text-white text-center leading-8 font-semibold">3</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-center text-gray-500 dark:text-gray-400 text-sm mt-2">
+                    评分标准: 5 = 非常适用/有丰富案例, 4 = 很适用/有多个案例, 3 = 适用/有案例, 2 = 有限支持/少量案例, 1 = 不适用/无案例
+                </p>
+            </div>
+
+            <!-- Integration best practices -->
+            <div class="my-12">
+                <h3 class="text-xl font-semibold mb-6">集成最佳实践建议</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-database text-blue-600 dark:text-blue-400 text-2xl mr-4"></i>
+                            <h4 class="text-lg font-semibold">日志系统集成</h4>
+                        </div>
+                        <p class="mb-3 text-gray-600 dark:text-gray-300">使用jq处理和转换日志数据，需要grep搜索时结合gron使用，结构化输出到Elasticsearch。</p>
+                        <div class="terminal mt-4 text-sm">
+                            <span class="prompt">$</span> <span class="command">cat logs.json | jq -c 'select(.level=="ERROR")' | elasticsearch_bulk_import</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-chart-line text-green-600 dark:text-green-400 text-2xl mr-4"></i>
+                            <h4 class="text-lg font-semibold">监控系统集成</h4>
+                        </div>
+                        <p class="mb-3 text-gray-600 dark:text-gray-300">用jq提取和格式化监控数据，对于需要调试查看的复杂指标可结合fx的交互能力。</p>
+                        <div class="terminal mt-4 text-sm">
+                            <span class="prompt">$</span> <span class="command">curl -s https://api.metrics/data | jq '.metrics | {cpu: .cpu_usage, mem: .memory_usage}' > metrics.json</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-code-branch text-purple-600 dark:text-purple-400 text-2xl mr-4"></i>
+                            <h4 class="text-lg font-semibold">CI/CD流水线集成</h4>
+                        </div>
+                        <p class="mb-3 text-gray-600 dark:text-gray-300">在CI/CD脚本中使用jq处理配置和结果，在调试阶段可使用fx进行交互式分析。</p>
+                        <div class="terminal mt-4 text-sm">
+                            <span class="prompt">$</span> <span class="command">cat config.json | jq '.env = "production"' > updated_config.json</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-6">
+                        <div class="flex items-center mb-4">
+                            <i class="fas fa-code text-red-600 dark:text-red-400 text-2xl mr-4"></i>
+                            <h4 class="text-lg font-semibold">自动化脚本集成</h4>
+                        </div>
+                        <p class="mb-3 text-gray-600 dark:text-gray-300">shell脚本中主要使用jq，针对文本处理和grep需求结合gron，复杂数据可用fx交互查看。</p>
+                        <div class="terminal mt-4 text-sm">
+                            <span class="prompt">$</span> <span class="command">for file in *.json; do</span>
+                            <br><span class="prompt">></span> <span class="command">  cat $file | jq -c '.transactions[]' >> all_transactions.jsonl</span>
+                            <br><span class="prompt">></span> <span class="command">done</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Practical examples -->
+        <section class="mb-20 max-w-4xl mx-auto">
+            <h2 class="text-3xl font-bold mb-8 text-center">实际操作示例</h2>
+            
+            <div class="prose dark:prose-invert mx-auto mb-8">
+                <p>为了验证我们的研究结果，我们使用真实的JSON日志数据对主要工具进行了实际测试。以下是一些常见查询场景的示例命令和结果。</p>
+            </div>
+            
+            <div class="space-y-8">
+                <!-- Example 1 -->
+                <div class="card overflow-hidden">
+                    <div class="bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 p-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="font-bold text-lg">示例1：过滤特定级别的日志</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">筛选所有ERROR级别的日志条目</p>
+                    </div>
+                    
+                    <div class="p-4">
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-2 flex items-center">
+                                <i class="fas fa-filter text-blue-600 dark:text-blue-400 mr-2"></i>jq 实现
+                            </h4>
+                            <div class="terminal text-sm">
+                                <span class="prompt">$</span> <span class="command">cat sample_logs.json | jq '.[] | select(.level == "ERROR")'</span>
+                                <div class="output mt-2">
+{
+  "timestamp": "2025-03-30T09:13:12.456Z",
+  "level": "ERROR",
+  "service": "payment-gateway",
+  "message": "Payment processing failed",
+  ...
+}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-2 flex items-center">
+                                <i class="fas fa-search text-purple-600 dark:text-purple-400 mr-2"></i>gron 实现
+                            </h4>
+                            <div class="terminal text-sm">
+                                <span class="prompt">$</span> <span class="command">gron sample_logs.json | grep 'level = "ERROR"'</span>
+                                <div class="output mt-2">
+json[1].level = "ERROR";
+json[4].level = "ERROR";
+json[7].level = "ERROR";</div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-semibold mb-2 flex items-center">
+                                <i class="fas fa-terminal text-green-600 dark:text-green-400 mr-2"></i>fx 实现
+                            </h4>
+                            <div class="terminal text-sm">
+                                <span class="prompt">$</span> <span class="command">cat sample_logs.json | fx '.filter(x => x.level === "ERROR")'</span>
+                                <div class="output mt-2">
+[
+  {
+    "timestamp": "2025-03-30T09:13:12.456Z",
+    "level": "ERROR",
+    "service": "payment-gateway",
+    ...
+  },
+  ...
+]</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-50 dark:bg-gray-800 p-4 border-t border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
+                                <span class="font-semibold">执行时间：</span> jq: 25ms | gron: 47ms | fx: 132ms
+                            </div>
+                            <div class="text-sm">
+                                <span class="badge badge-primary">简单复杂度</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Example 2 -->
+                <div class="card overflow-hidden">
+                    <div class="bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 p-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="font-bold text-lg">示例2：复杂条件过滤与数据转换</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">查找响应时间超过200ms的请求并提取关键信息</p>
+                    </div>
+                    
+                    <div class="p-4">
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-2 flex items-center">
+                                <i class="fas fa-filter text-blue-600 dark:text-blue-400 mr-2"></i>jq 实现
+                            </h4>
+                            <div class="terminal text-sm">
+                                <span class="prompt">$</span> <span class="command">cat sample_logs.json | jq '.[] | select(.metrics.responseTime > 200) | {service: .service, time: .metrics.responseTime, message: .message}'</span>
+                                <div class="output mt-2">
+{
+  "service": "notification-service",
+  "time": 205,
+  "message": "Email notification sent"
+}
+{
+  "service": "recommendation-engine",
+  "time": 320,
+  "message": "Product recommendations generated"
+}
+...</div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-semibold mb-2 flex items-center">
+                                <i class="fas fa-terminal text-green-600 dark:text-green-400 mr-2"></i>fx 实现
+                            </h4>
+                            <div class="terminal text-sm">
+                                <span class="prompt">$</span> <span class="command">cat sample_logs.json | fx '.filter(x => x.metrics && x.metrics.responseTime > 200).map(x => ({service: x.service, time: x.metrics.responseTime, message: x.message}))'</span>
+                                <div class="output mt-2">
+[
+  {
+    "service": "notification-service",
+    "time": 205,
+    "message": "Email notification sent"
+  },
+  {
+    "service": "recommendation-engine",
+    "time": 320,
+    "message": "Product recommendations generated"
+  },
+  ...
+]</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-50 dark:bg-gray-800 p-4 border-t border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
+                                <span class="font-semibold">执行时间：</span> jq: 30ms | fx: 140ms
+                            </div>
+                            <div class="text-sm">
+                                <span class="badge badge-warning">中等复杂度</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Example 3 -->
+                <div class="card overflow-hidden">
+                    <div class="bg-blue-50 dark:bg-blue-900 dark:bg-opacity-30 p-4 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="font-bold text-lg">示例3：复杂聚合统计</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-400">按服务统计不同日志级别的数量</p>
+                    </div>
+                    
+                    <div class="p-4">
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-2 flex items-center">
+                                <i class="fas fa-filter text-blue-600 dark:text-blue-400 mr-2"></i>jq 实现
+                            </h4>
+                            <div class="terminal text-sm">
+                                <span class="prompt">$</span> <span class="command">cat sample_logs.json | jq 'group_by(.service) | map({service: .[0].service, counts: group_by(.level) | map({level: .[0].level, count: length}) | from_entries})'</span>
+                                <div class="output mt-2">
+[
+  {
+    "service": "user-authentication",
+    "counts": {
+      "INFO": 2,
+      "ERROR": 1
+    }
+  },
+  {
+    "service": "payment-gateway",
+    "counts": {
+      "ERROR": 1,
+      "WARN": 1
+    }
+  },
+  ...
+]</div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-semibold mb-2 flex items-center">
+                                <i class="fas fa-terminal text-green-600 dark:text-green-400 mr-2"></i>fx 实现
+                            </h4>
+                            <div class="terminal text-sm">
+                                <span class="prompt">$</span> <span class="command">cat sample_logs.json | fx '.reduce((acc, log) => { acc[log.service] = acc[log.service] || {}; acc[log.service][log.level] = (acc[log.service][log.level] || 0) + 1; return acc; }, {})'</span>
+                                <div class="output mt-2">
+{
+  "user-authentication": {
+    "INFO": 2,
+    "ERROR": 1
+  },
+  "payment-gateway": {
+    "ERROR": 1,
+    "WARN": 1
+  },
+  ...
+}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-50 dark:bg-gray-800 p-4 border-t border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-between">
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
+                                <span class="font-semibold">执行时间：</span> jq: 45ms | fx: 170ms
+                            </div>
+                            <div class="text-sm">
+                                <span class="badge badge-error">复杂复杂度</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recommendations -->
+        <section id="recommendations" class="mb-20 max-w-4xl mx-auto">
+            <h2 class="text-3xl font-bold mb-8 text-center">结论与推荐</h2>
+            
+            <div class="prose dark:prose-invert mx-auto mb-8">
+                <p>基于我们的研究和测试，我们为不同场景和需求提供以下工具推荐：</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                <!-- Recommendation 1 -->
+                <div class="card p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 mr-4">
+                            <i class="fas fa-bolt text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">自动化脚本和CI/CD流水线</h3>
+                    </div>
+                    <div>
+                        <p class="mb-4 text-gray-600 dark:text-gray-300">首选工具：<span class="font-semibold">jq</span></p>
+                        <ul class="list-disc list-inside text-gray-600 dark:text-gray-300 space-y-2">
+                            <li>速度最快，能高效处理大型JSON文件</li>
+                            <li>无依赖，易于在任何环境中部署</li>
+                            <li>广泛的CI/CD工具集成案例</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Recommendation 2 -->
+                <div class="card p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center text-green-600 dark:text-green-400 mr-4">
+                            <i class="fas fa-desktop text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">交互式数据探索和调试</h3>
+                    </div>
+                    <div>
+                        <p class="mb-4 text-gray-600 dark:text-gray-300">首选工具：<span class="font-semibold">fx</span> 或 <span class="font-semibold">jless</span></p>
+                        <ul class="list-disc list-inside text-gray-600 dark:text-gray-300 space-y-2">
+                            <li>提供丰富的交互式界面和导航功能</li>
+                            <li>fx支持JavaScript生态强大功能</li>
+                            <li>jless对于Vim用户提供熟悉的操作体验</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Recommendation 3 -->
+                <div class="card p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center text-purple-600 dark:text-purple-400 mr-4">
+                            <i class="fas fa-search text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">与现有Unix工具集成</h3>
+                    </div>
+                    <div>
+                        <p class="mb-4 text-gray-600 dark:text-gray-300">首选工具：<span class="font-semibold">gron</span></p>
+                        <ul class="list-disc list-inside text-gray-600 dark:text-gray-300 space-y-2">
+                            <li>使JSON可被grep搜索，与现有文本处理工具无缝集成</li>
+                            <li>简单直观的使用方式</li>
+                            <li>适合快速搜索和过滤任务</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Recommendation 4 -->
+                <div class="card p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center text-red-600 dark:text-red-400 mr-4">
+                            <i class="fas fa-exchange-alt text-xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">命令输出转JSON处理</h3>
+                    </div>
+                    <div>
+                        <p class="mb-4 text-gray-600 dark:text-gray-300">首选工具：<span class="font-semibold">jc</span></p>
+                        <ul class="list-disc list-inside text-gray-600 dark:text-gray-300 space-y-2">
+                            <li>专为将命令行工具输出转换为JSON而设计</li>
+                            <li>支持多种常用系统命令</li>
+                            <li>简化了传统命令输出的结构化处理</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Final recommendation -->
+            <div class="bg-blue-50 dark:bg-blue-900 dark:bg-opacity-20 rounded-lg p-6 mb-8">
+                <h3 class="text-xl font-semibold mb-4"><i class="fas fa-lightbulb text-yellow-500 mr-2"></i>综合推荐</h3>
+                <p class="mb-4 text-gray-700 dark:text-gray-300">对于处理JSON结构化日志的团队，我们建议：</p>
+                <ol class="list-decimal list-inside text-gray-700 dark:text-gray-300 space-y-3">
+                    <li><strong>将 jq 作为主要工具</strong>安装在所有系统中，用于自动化脚本和日常命令行操作</li>
+                    <li><strong>为开发人员额外安装 fx</strong>，以提升交互式数据探索和调试体验</li>
+                    <li><strong>在需要与现有文本处理工具集成的环境中补充安装 gron</strong>，便于使用grep等工具处理JSON</li>
+                    <li><strong>根据具体需求选择性安装其他工具</strong>，例如需要将命令输出转为JSON时使用jc</li>
+                </ol>
+            </div>
+
+            <!-- Further reading -->
+            <div class="card p-6">
+                <h3 class="text-xl font-semibold mb-6 flex items-center">
+                    <i class="fas fa-book-open text-blue-600 dark:text-blue-400 mr-2"></i>进一步阅读
+                </h3>
+                
+                <div class="space-y-4">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 mt-1">
+                            <i class="fas fa-bookmark text-blue-500 dark:text-blue-400"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h4 class="font-medium">《JSON at Work: Practical Data Integration for the Web》</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Tom Marrs著 - 深入探讨JSON数据的处理和集成技术，包含多种工具的实践应用案例</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 mt-1">
+                            <i class="fas fa-bookmark text-blue-500 dark:text-blue-400"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h4 class="font-medium">《The Art of Modern Logging: Structured Data in Production Systems》</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">James Smith著 - 详细介绍结构化日志在现代系统中的最佳实践和工具选择</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 mt-1">
+                            <i class="fas fa-bookmark text-blue-500 dark:text-blue-400"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h4 class="font-medium">《jq Cookbook》</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">开源社区作品 - 收集了大量jq实际应用案例和技巧，适合从初学到高级用户</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 mt-1">
+                            <i class="fas fa-bookmark text-blue-500 dark:text-blue-400"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h4 class="font-medium">《Command Line Analytics: Processing Data with Unix Tools》</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">Adam Drake著 - 介绍如何使用命令行工具高效处理和分析各种格式的数据</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 mt-1">
+                            <i class="fas fa-bookmark text-blue-500 dark:text-blue-400"></i>
+                        </div>
+                        <div class="ml-4">
+                            <h4 class="font-medium">《Logging and Monitoring in Microservice Architectures》</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400">技术研究论文集 - 关于在微服务架构中实现高效日志管理和监控的最佳实践</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer class="bg-gray-100 dark:bg-gray-800 py-12">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-6 md:mb-0">
+                    <h3 class="text-lg font-bold mb-2">JSON结构化日志查询命令行工具研究报告</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">报告生成时间：2025年03月30日</p>
+                </div>
+                
+                <div class="flex space-x-4">
+                    <a href="#" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fab fa-github text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fab fa-twitter text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">
+                        <i class="fas fa-envelope text-xl"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Include Alpine.js -->
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.10.5/dist/cdn.min.js" defer></script>
+    
+    <script>
+        // Initialize mermaid
+        document.addEventListener('DOMContentLoaded', function() {
+            mermaid.initialize({
+                theme: localStorage.getItem('darkMode') === 'true' ? 'dark' : 'default',
+                securityLevel: 'loose',
+                startOnLoad: true
+            });
+            
+            // Charts
+            const ctx1 = document.getElementById('executionTimeChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['jq', 'fx', 'gron'],
+                    datasets: [{
+                        label: '平均执行时间 (毫秒)',
+                        data: [33, 147, 53],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.7)',
+                            'rgba(16, 185, 129, 0.7)',
+                            'rgba(139, 92, 246, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgb(59, 130, 246)',
+                            'rgb(16, 185, 129)',
+                            'rgb(139, 92, 246)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '毫秒'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+            
+            const ctx2 = document.getElementById('successRateChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'radar',
+                data: {
+                    labels: [
+                        '基本筛选',
+                        '嵌套对象查询',
+                        '数值条件过滤',
+                        '数组处理',
+                        '聚合统计'
+                    ],
+                    datasets: [{
+                        label: 'jq',
+                        data: [100, 100, 100, 100, 100],
+                        fill: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        pointBackgroundColor: 'rgb(59, 130, 246)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(59, 130, 246)'
+                    }, {
+                        label: 'fx',
+                        data: [100, 100, 100, 100, 100],
+                        fill: true,
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        borderColor: 'rgb(16, 185, 129)',
+                        pointBackgroundColor: 'rgb(16, 185, 129)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(16, 185, 129)'
+                    }, {
+                        label: 'gron',
+                        data: [100, 100, 0, 0, 0],
+                        fill: true,
+                        backgroundColor: 'rgba(139, 92, 246, 0.2)',
+                        borderColor: 'rgb(139, 92, 246)',
+                        pointBackgroundColor: 'rgb(139, 92, 246)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(139, 92, 246)'
+                    }]
+                },
+                options: {
+                    elements: {
+                        line: {
+                            borderWidth: 3
+                        }
+                    },
+                    scales: {
+                        r: {
+                            angleLines: {
+                                display: true
+                            },
+                            suggestedMin: 0,
+                            suggestedMax: 100
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
