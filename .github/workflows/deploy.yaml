@@ -1,0 +1,32 @@
+name: Test Netlify Deploy
+
+on:
+    push:
+        branches: [ main ]
+    workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  claude:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: "Deploy AI Gen Site to Netlify"
+        uses: South-Paw/action-netlify-cli@v2
+        id: netlify
+        with:
+          # note that the --json flag has been passed so we can parse outputs
+          args: deploy --json --prod --dir './techniques' --message 'production [${{ github.sha }}]'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+      - name: "Netlify deploy output"
+        run: |
+          echo "${{ steps.netlify.outputs.NETLIFY_OUTPUT }}"
